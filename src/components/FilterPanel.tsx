@@ -35,18 +35,18 @@ export function FilterPanel({
   const removePrevious = (i: number) => onChange({ previousCompanies: f.previousCompanies.filter((_, j) => j !== i) });
 
   return (
-    <div aria-label={t.filtersLabel} role="region" className="bg-card px-5 md:px-6">
+    <div aria-label={t.filtersLabel} role="region" className="-mx-4 bg-card px-4 sm:mx-0 sm:px-5 md:px-6">
       <JdPanel onFill={onJdFill} />
 
       <FilterRow label={t.rowName}>
-        <div className={`grid gap-3 sm:grid-cols-2 ${CONTROLS}`}>
+        <div className={`grid grid-cols-2 gap-3 ${CONTROLS}`}>
           <TextField label={t.lastName} value={f.lastName} onChange={(v) => onChange({ lastName: v })} />
           <TextField label={t.firstName} value={f.firstName} onChange={(v) => onChange({ firstName: v })} />
         </div>
       </FilterRow>
 
       <FilterRow label={t.rowCompany}>
-        <div className={`grid gap-3 sm:grid-cols-2 ${CONTROLS}`}>
+        <div className={`grid grid-cols-2 gap-3 ${CONTROLS}`}>
           <TextField label={t.currentCompany} value={f.currentCompany} onChange={(v) => onChange({ currentCompany: v })} />
           <div className="flex flex-col gap-3">
             {f.previousCompanies.map((p, i) => (
@@ -61,7 +61,7 @@ export function FilterPanel({
                       type="button"
                       onClick={() => removePrevious(i)}
                       aria-label={t.removePrevious}
-                      className="h-10 w-10 flex-none border border-l-0 border-control text-[16px] text-muted hover:text-ink"
+                      className="h-11 w-10 flex-none border border-l-0 border-control sm:h-10 text-[16px] text-muted hover:text-ink"
                     >
                       ×
                     </button>
@@ -69,14 +69,17 @@ export function FilterPanel({
                 }
               />
             ))}
-            <button
-              type="button"
-              onClick={() => onChange({ previousCompanies: [...f.previousCompanies, ''] })}
-              className="self-start text-[13px] underline underline-offset-2"
-            >
-              {t.addPrevious}
-            </button>
           </div>
+        </div>
+        {/* Own line so it never wraps on phones; under the previous-company column on wider screens. */}
+        <div className={`mt-3 sm:grid sm:grid-cols-2 sm:gap-3 ${CONTROLS}`}>
+          <button
+            type="button"
+            onClick={() => onChange({ previousCompanies: [...f.previousCompanies, ''] })}
+            className="text-left text-[13px] underline underline-offset-2 sm:col-start-2 sm:justify-self-start"
+          >
+            {t.addPrevious}
+          </button>
         </div>
       </FilterRow>
 

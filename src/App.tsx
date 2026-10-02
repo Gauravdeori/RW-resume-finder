@@ -190,10 +190,20 @@ export default function App() {
         onSearchNav={newSearch}
       />
 
-      <main className={`mx-auto w-full max-w-[1200px] flex-1 px-4 pt-8 md:px-8 ${view === 'panel' ? 'pb-36 lg:pb-12' : 'pb-12'}`}>
+      <main className={`mx-auto w-full max-w-[1200px] flex-1 px-4 pt-5 sm:pt-8 md:px-8 ${view === 'panel' ? 'pb-24 lg:pb-12' : 'pb-12'}`}>
         {view === 'panel' ? (
           <>
-            <h1 className="text-[32px] leading-tight font-extrabold tracking-tight">{t.pageTitle}</h1>
+            <div className="flex items-end justify-between gap-4">
+              <h1 className="text-[26px] leading-tight font-extrabold tracking-tight sm:text-[32px]">{t.pageTitle}</h1>
+              {/* On phones the bottom bar has no room for this, so it sits by the title. */}
+              <button
+                type="button"
+                onClick={() => replaceDraft(emptyFilters())}
+                className="mb-1 flex-none text-[13px] underline underline-offset-2 lg:hidden"
+              >
+                {t.clearAll}
+              </button>
+            </div>
             <p className="mt-1 text-[13px] text-muted">{t.pageSub}</p>
 
             {showTrailOnPanel && (
@@ -208,7 +218,7 @@ export default function App() {
               </div>
             )}
 
-            <div className="mt-6 grid items-start lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="mt-5 grid items-start sm:mt-6 lg:grid-cols-[minmax(0,1fr)_300px]">
               <FilterPanel
                 filters={draft}
                 onChange={patchDraft}
@@ -245,7 +255,7 @@ export default function App() {
         )}
       </main>
 
-      <footer className={`mx-auto w-full max-w-[1200px] px-4 pt-2 text-[12px] text-muted md:px-8 ${view === 'panel' ? 'pb-40 lg:pb-8' : 'pb-8'}`}>
+      <footer className={`mx-auto w-full max-w-[1200px] px-4 pt-2 text-[12px] text-muted md:px-8 ${view === 'panel' ? 'pb-28 lg:pb-8' : 'pb-8'}`}>
         {t.footer}
       </footer>
 

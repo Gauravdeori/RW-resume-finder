@@ -24,7 +24,7 @@ export function CvModal({ c, onClose }: { c: Candidate; onClose: () => void }) {
   ];
 
   return (
-    <Modal labelledBy={titleId} onClose={onClose} initialFocus={closeRef} className="max-w-[540px] px-6 py-7 sm:px-8">
+    <Modal labelledBy={titleId} onClose={onClose} initialFocus={closeRef} className="max-w-[540px] px-5 py-6 sm:px-8 sm:py-7">
       <button
         ref={closeRef}
         type="button"

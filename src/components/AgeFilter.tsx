@@ -8,12 +8,14 @@ type AgePatch = Pick<Filters, 'ageMode' | 'decades' | 'ageMin' | 'ageMax'>;
 
 const ANY: AgePatch = { ageMode: 'any', decades: [], ageMin: AGE_MIN, ageMax: AGE_MAX };
 const SPAN = AGE_MAX - AGE_MIN;
-const THUMB = 16;
 
-/** Position along the track, corrected for the native thumb width so the drawn line meets the thumb centre. */
+/**
+ * Position along the track, corrected for the native thumb width (--thumb, larger on touch screens)
+ * so the drawn line meets the thumb centre.
+ */
 const pos = (v: number) => {
   const p = ((v - AGE_MIN) / SPAN) * 100;
-  return `calc(${p}% + ${THUMB / 2 - (p * THUMB) / 100}px)`;
+  return `calc(${p}% + var(--thumb) * ${0.5 - p / 100})`;
 };
 
 /**
@@ -49,7 +51,7 @@ export function AgeFilter({ filters, onChange }: { filters: Filters; onChange: (
       </div>
 
       <div className="dual-range mt-4 max-w-[300px]">
-        <div aria-hidden className="absolute top-1/2 h-[2px] -translate-y-1/2 bg-line" style={{ left: THUMB / 2, right: THUMB / 2 }} />
+        <div aria-hidden className="absolute top-1/2 h-[2px] -translate-y-1/2 bg-line" style={{ left: 'calc(var(--thumb) / 2)', right: 'calc(var(--thumb) / 2)' }} />
         <div
           aria-hidden
           className="absolute top-1/2 h-[2px] -translate-y-1/2 bg-ink"

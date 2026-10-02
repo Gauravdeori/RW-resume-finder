@@ -23,7 +23,7 @@ export function Toggle({
       aria-label={label}
       onClick={onClick}
       className={cx(
-        'inline-flex h-9 items-center justify-center gap-1.5 border px-3 text-[13px] leading-none whitespace-nowrap transition-colors',
+        'inline-flex h-10 items-center justify-center gap-1.5 border px-3 text-[13px] leading-none whitespace-nowrap transition-colors sm:h-9',
         on ? 'border-sel bg-sel text-on-sel' : 'border-control bg-field text-ink hover:border-ink',
         className,
       )}
@@ -42,7 +42,7 @@ export function CheckTile({ on, onClick, label }: { on: boolean; onClick: () => 
       aria-checked={on}
       onClick={onClick}
       className={cx(
-        'flex min-h-[38px] items-center gap-2 border px-2.5 py-1.5 text-left text-[13px] leading-[1.15] transition-colors',
+        'flex min-h-[44px] items-center gap-2 border px-2.5 py-1.5 text-left text-[13px] leading-[1.15] transition-colors sm:min-h-[38px]',
         on ? 'border-sel bg-sel text-on-sel' : 'border-control bg-field text-ink hover:border-ink',
       )}
     >
@@ -88,7 +88,7 @@ export function TextField({
           autoComplete="off"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-10 w-full min-w-0 border border-control bg-field px-3 text-[14px] text-ink outline-none focus:border-ink focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent"
+          className="h-11 w-full min-w-0 border border-control bg-field px-3 text-[16px] text-ink sm:h-10 sm:text-[14px] outline-none focus:border-ink focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent"
         />
         {trailing}
       </div>
@@ -102,7 +102,7 @@ export function FilterRow({ label, sub, children }: { label: string; sub?: strin
   return (
     <section
       aria-labelledby={id}
-      className="grid gap-3 border-b border-line py-5 last:border-b-0 md:grid-cols-[132px_minmax(0,1fr)] md:gap-4"
+      className="grid gap-3 border-b border-line py-4 last:border-b-0 sm:py-5 md:grid-cols-[132px_minmax(0,1fr)] md:gap-4"
     >
       <div>
         <h2 id={id} className="text-[14px] font-semibold leading-tight">

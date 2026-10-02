@@ -48,7 +48,7 @@ export function JdPanel({ onFill }: { onFill: (patch: Partial<Filters>) => void 
             setText(e.target.value);
             setStatus(null);
           }}
-          className="block w-full resize-y border border-control bg-field p-3 text-[13px] leading-relaxed text-ink outline-none placeholder:text-muted focus:border-ink"
+          className="block w-full resize-y border border-control bg-field p-3 text-[16px] leading-relaxed text-ink sm:text-[13px] outline-none placeholder:text-muted focus:border-ink"
         />
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
           <button type="button" onClick={fill} className="h-10 border border-ink px-4 text-[13px] font-medium hover:bg-sel hover:text-on-sel">

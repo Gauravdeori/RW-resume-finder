@@ -38,7 +38,7 @@ export function SaveSearchModal({
           value={name}
           onChange={(e) => setName(e.target.value)}
           onFocus={(e) => e.currentTarget.select()}
-          className="h-10 w-full border border-ink bg-field px-3 text-[14px] text-ink outline-none"
+          className="h-10 w-full border border-ink bg-field px-3 text-[16px] text-ink outline-none sm:text-[14px]"
         />
         <div className="mt-4 flex justify-end gap-3">
           <button type="button" onClick={onCancel} className="h-9 border border-ink px-4 text-[13px]">
