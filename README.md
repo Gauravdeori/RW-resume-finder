@@ -37,7 +37,7 @@ Deploy: Netlify / Vercel / Render static site with build command `npm run build`
 | Light / dark switch (defaults to device, remembered) | `components/ThemeSwitch.tsx`, `lib/theme.ts`, `src/index.css` |
 | Upload Resume page (dummy: pick or drop a file, settings, simulated conversion) | `components/UploadPage.tsx` |
 | Dashboard page (dummy: stats, last 15 conversions, edit details, delete with undo) | `components/DashboardPage.tsx`, `lib/conversions.ts` |
-| Page switching (`#/upload`, `#/dashboard`, `#/search`, `#/admin`; works on any static host). The logo and "Resume Finder" go to Search | `lib/route.ts`, `components/TopBar.tsx` |
+| Page switching (`#/upload`, `#/dashboard`, `#/search`, `#/admin`; works on any static host). The candidate search is listed in the menu as "Resume Finder"; the logo also goes there | `lib/route.ts`, `components/TopBar.tsx` |
 | Admin page (dummy users and activity; invite, change role, deactivate, remove). Its search settings really apply: gender filter on/off (per-country rule), job description panel on/off. "Reset demo data" restores all sample data | `components/AdminPage.tsx`, `lib/admin.ts` |
 
 ## Search rules (`lib/filter.ts`)

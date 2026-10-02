@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 
-/** Pages reachable from the top bar. Hash routes work on any static host (Vercel, Netlify) without rewrites. */
+/**
+ * Pages reachable from the top bar. Hash routes work on any static host (Vercel, Netlify) without rewrites.
+ * 'search' is the candidate search, shown in the menu as "Resume Finder".
+ */
 export type Route = 'search' | 'upload' | 'dashboard' | 'admin';
 
 const ROUTES: Route[] = ['search', 'upload', 'dashboard', 'admin'];

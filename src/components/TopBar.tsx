@@ -22,10 +22,11 @@ export function TopBar({
   onDeleteSaved: (id: string) => void;
 }) {
   const { t, lang, setLang } = useI18n();
+  // Candidate search lives under the product name, Resume Finder, first in the menu.
   const links: { key: Route; label: string }[] = [
+    { key: 'search', label: t.nav.search },
     { key: 'upload', label: t.nav.upload },
     { key: 'dashboard', label: t.nav.dashboard },
-    { key: 'search', label: t.nav.search },
     { key: 'admin', label: t.nav.admin },
   ];
   const link = (key: Route, label: string, className: (active: boolean) => string) => {
@@ -44,20 +45,17 @@ export function TopBar({
           href={hrefFor('search')}
           aria-label={t.homeLabel}
           onClick={() => {
-            // Already on Search: take the recruiter back to the top of the page.
+            // Already on Resume Finder: take the recruiter back to the top of the page.
             if (route === 'search') window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className="group flex flex-none items-center"
+          className="flex flex-none items-center"
         >
           <span aria-hidden className="text-[12px] leading-[1.05] font-extrabold tracking-tight">
             <span className="block">{t.brandTop}</span>
             <span className="block">{t.brandBottom}</span>
           </span>
-          <span aria-hidden className="mx-3 hidden h-5 w-px bg-white/35 sm:block" />
-          <span aria-hidden className="hidden text-[12px] group-hover:underline group-hover:underline-offset-4 sm:inline">
-            {t.appName}
-          </span>
         </a>
+        <span aria-hidden className="-mx-1 hidden h-5 w-px bg-white/35 md:block lg:-mx-2" />
 
         <nav aria-label={t.mainNav} className="hidden md:block">
           <ul className="flex items-center gap-6 text-[12px]">

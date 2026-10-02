@@ -36,9 +36,10 @@ const en = {
   brandTop: 'Robert—',
   brandBottom: '—Walters',
   brandLabel: 'Robert Walters',
-  nav: { upload: 'Upload Resume', dashboard: 'Dashboard', search: 'Search', admin: 'Admin' },
+  /** The search page is listed under the product name, Resume Finder. */
+  nav: { search: 'Resume Finder', upload: 'Upload Resume', dashboard: 'Dashboard', admin: 'Admin' },
   /** Shorter labels for the phone tab strip. */
-  navShort: { upload: 'Upload', dashboard: 'Dashboard', search: 'Search', admin: 'Admin' },
+  navShort: { search: 'Resume Finder', upload: 'Upload', dashboard: 'Dashboard', admin: 'Admin' },
   homeLabel: 'Resume Finder home',
   mainNav: 'Main',
   signOut: 'Sign out',
@@ -417,8 +418,8 @@ const ja: Dict = {
   brandTop: 'Robert—',
   brandBottom: '—Walters',
   brandLabel: 'Robert Walters',
-  nav: { upload: '履歴書をアップロード', dashboard: 'ダッシュボード', search: '候補者検索', admin: '管理' },
-  navShort: { upload: 'アップロード', dashboard: 'ダッシュボード', search: '検索', admin: '管理' },
+  nav: { search: 'Resume Finder', upload: '履歴書をアップロード', dashboard: 'ダッシュボード', admin: '管理' },
+  navShort: { search: 'Resume Finder', upload: 'アップロード', dashboard: 'ダッシュボード', admin: '管理' },
   homeLabel: 'Resume Finder ホーム',
   mainNav: 'メイン',
   signOut: 'サインアウト',
