@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CountRail } from './components/CountRail';
+import { AdminPage } from './components/AdminPage';
 import { CvModal } from './components/CvModal';
 import { DashboardPage } from './components/DashboardPage';
 import { FilterPanel } from './components/FilterPanel';
@@ -8,13 +9,14 @@ import { SaveSearchModal } from './components/SaveSearchModal';
 import { TopBar } from './components/TopBar';
 import { Trail, type TrailItem } from './components/Trail';
 import { UploadPage, type UploadSettings } from './components/UploadPage';
-import { KEEP_LAST, loadConversions, newConversion, storeConversions, type Conversion } from './lib/conversions';
+import { DEFAULT_SETTINGS, loadSettings, storeSettings, type AppSettings } from './lib/admin';
+import { KEEP_LAST, clearStoredConversions, loadConversions, newConversion, storeConversions, type Conversion } from './lib/conversions';
 import { CANDIDATES } from './lib/data';
 import { suggestName } from './lib/describe';
 import { chainSteps, countMatches, sortCandidates, type SortKey } from './lib/filter';
 import { useI18n } from './lib/i18n';
 import { useHashRoute } from './lib/route';
-import { loadSaved, newSavedId, storeSaved, type SavedSearch } from './lib/savedSearches';
+import { clearStoredSaved, loadSaved, newSavedId, storeSaved, type SavedSearch } from './lib/savedSearches';
 import { cloneFilters, emptyFilters, type Candidate, type Filters } from './lib/types';
 
 const PAGE = 10;
@@ -89,10 +91,20 @@ export default function App() {
 
   useEffect(() => storeSaved(saved), [saved]);
 
-  const stepResults = useMemo(() => chainSteps(steps), [steps]);
+  // Admin settings that change the Search page.
+  const [settings, setSettings] = useState<AppSettings>(loadSettings);
+  useEffect(() => storeSettings(settings), [settings]);
+  /** With the gender filter switched off in Admin, any gender choice is ignored, including in saved searches. */
+  const applySettings = useCallback(
+    (f: Filters): Filters => (settings.showGender || !f.genders.length ? f : { ...f, genders: [] }),
+    [settings.showGender],
+  );
+  const effectiveSteps = useMemo(() => steps.map(applySettings), [steps, applySettings]);
+
+  const stepResults = useMemo(() => chainSteps(effectiveSteps), [effectiveSteps]);
   const base = stepResults[Math.min(editIndex, stepResults.length - 1)];
   const liveDraft = useLiveFilters(draft, draftVersion);
-  const draftCount = useMemo(() => countMatches(base, liveDraft), [base, liveDraft]);
+  const draftCount = useMemo(() => countMatches(base, applySettings(liveDraft)), [base, liveDraft, applySettings]);
 
   const current = stepResults[stepResults.length - 1];
   const sorted = useMemo(() => sortCandidates(current, sort), [current, sort]);
@@ -212,7 +224,20 @@ export default function App() {
       <main
         className={`mx-auto w-full flex-1 px-4 pt-5 sm:pt-8 md:px-8 ${route === 'search' ? 'max-w-[1200px]' : 'max-w-[1300px]'} ${searchPanel ? 'pb-24 lg:pb-12' : 'pb-12'}`}
       >
-        {route === 'upload' ? (
+        {route === 'admin' ? (
+          <AdminPage
+            settings={settings}
+            onSettings={(p) => setSettings((s) => ({ ...s, ...p }))}
+            conversionsCount={conversions.length}
+            onResetOthers={() => {
+              clearStoredSaved();
+              clearStoredConversions();
+              setSaved(loadSaved());
+              setConversions(loadConversions());
+              setSettings(DEFAULT_SETTINGS);
+            }}
+          />
+        ) : route === 'upload' ? (
           <UploadPage onConverted={addConversion} onOpenDashboard={() => go('dashboard')} />
         ) : route === 'dashboard' ? (
           <DashboardPage
@@ -253,6 +278,8 @@ export default function App() {
                 filters={draft}
                 onChange={patchDraft}
                 onJdFill={(p) => replaceDraft({ ...draft, ...p })}
+                showGender={settings.showGender}
+                showJdFill={settings.showJdFill}
               />
               <CountRail
                 count={draftCount}
@@ -266,7 +293,7 @@ export default function App() {
           </>
         ) : (
           <ResultsList
-            steps={steps}
+            steps={effectiveSteps}
             results={sorted}
             visible={visible}
             sort={sort}

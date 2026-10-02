@@ -53,3 +53,12 @@ export function storeSaved(list: SavedSearch[]): void {
 }
 
 export const newSavedId = () => `s-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
+
+/** Forget stored data so the next load returns the seed data ("Reset demo data" in Admin). */
+export function clearStoredSaved(): void {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    /* nothing stored */
+  }
+}

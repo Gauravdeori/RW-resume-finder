@@ -193,3 +193,8 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.18em;
 }
+
+/* Wide tracking suits Latin capitals; Japanese reads better tighter. */
+:lang(ja) .mono-caps {
+  letter-spacing: 0.06em;
+}

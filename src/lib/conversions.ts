@@ -122,3 +122,12 @@ export function newConversion(
     createdAt: new Date().toISOString(),
   };
 }
+
+/** Forget stored data so the next load returns the seed data ("Reset demo data" in Admin). */
+export function clearStoredConversions(): void {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    /* nothing stored */
+  }
+}

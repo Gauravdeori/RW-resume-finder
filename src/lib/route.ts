@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 
 /** Pages reachable from the top bar. Hash routes work on any static host (Vercel, Netlify) without rewrites. */
-export type Route = 'search' | 'upload' | 'dashboard';
+export type Route = 'search' | 'upload' | 'dashboard' | 'admin';
 
-const ROUTES: Route[] = ['search', 'upload', 'dashboard'];
+const ROUTES: Route[] = ['search', 'upload', 'dashboard', 'admin'];
 
 function parse(hash: string): Route {
   const r = hash.replace(/^#\/?/, '') as Route;

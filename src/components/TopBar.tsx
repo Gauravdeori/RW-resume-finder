@@ -10,8 +10,6 @@ const LANGS: { id: Lang; label: string }[] = [
   { id: 'ja', label: '日本語' },
 ];
 
-type NavKey = Route | 'admin';
-
 export function TopBar({
   route,
   saved,
@@ -24,24 +22,17 @@ export function TopBar({
   onDeleteSaved: (id: string) => void;
 }) {
   const { t, lang, setLang } = useI18n();
-  const links: { key: NavKey; label: string }[] = [
+  const links: { key: Route; label: string }[] = [
     { key: 'upload', label: t.nav.upload },
     { key: 'dashboard', label: t.nav.dashboard },
     { key: 'search', label: t.nav.search },
     { key: 'admin', label: t.nav.admin },
   ];
-  // Admin is not part of this prototype: it is shown for context but goes nowhere.
-  const link = (key: NavKey, className: (active: boolean) => string) => {
+  const link = (key: Route, label: string, className: (active: boolean) => string) => {
     const active = key === route;
     return (
-      <a
-        href={key === 'admin' ? '#' : hrefFor(key)}
-        aria-current={active ? 'page' : undefined}
-        aria-disabled={key === 'admin' ? true : undefined}
-        onClick={key === 'admin' ? (e) => e.preventDefault() : undefined}
-        className={className(active)}
-      >
-        {links.find((l) => l.key === key)?.label}
+      <a href={hrefFor(key)} aria-current={active ? 'page' : undefined} className={className(active)}>
+        {label}
       </a>
     );
   };
@@ -49,24 +40,33 @@ export function TopBar({
   return (
     <header className="border-b border-topbar-border bg-topbar text-white">
       <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-4 px-4 md:px-8 lg:gap-7">
-        <div className="flex flex-none items-center">
-          <span aria-label={t.brandLabel} className="text-[12px] leading-[1.05] font-extrabold tracking-tight">
-            <span aria-hidden className="block">{t.brandTop}</span>
-            <span aria-hidden className="block">{t.brandBottom}</span>
+        <a
+          href={hrefFor('search')}
+          aria-label={t.homeLabel}
+          onClick={() => {
+            // Already on Search: take the recruiter back to the top of the page.
+            if (route === 'search') window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          className="group flex flex-none items-center"
+        >
+          <span aria-hidden className="text-[12px] leading-[1.05] font-extrabold tracking-tight">
+            <span className="block">{t.brandTop}</span>
+            <span className="block">{t.brandBottom}</span>
           </span>
           <span aria-hidden className="mx-3 hidden h-5 w-px bg-white/35 sm:block" />
-          <span className="hidden text-[12px] sm:inline">{t.appName}</span>
-        </div>
+          <span aria-hidden className="hidden text-[12px] group-hover:underline group-hover:underline-offset-4 sm:inline">
+            {t.appName}
+          </span>
+        </a>
 
         <nav aria-label={t.mainNav} className="hidden md:block">
           <ul className="flex items-center gap-6 text-[12px]">
             {links.map((l) => (
               <li key={l.key}>
-                {link(l.key, (active) =>
+                {link(l.key, l.label, (active) =>
                   cx(
                     'relative inline-block py-1',
                     active ? 'text-white after:absolute after:inset-x-0 after:-bottom-1 after:h-[2px] after:bg-accent' : 'text-white/75 hover:text-white',
-                    l.key === 'admin' && 'cursor-default',
                   ),
                 )}
               </li>
@@ -94,19 +94,17 @@ export function TopBar({
         </div>
       </div>
       <nav aria-label={t.mainNav} className="border-t border-white/10 md:hidden">
-        <ul className="flex px-2 text-[13px]">
-          {links
-            .filter((l) => l.key !== 'admin')
-            .map((l) => (
-              <li key={l.key} className="flex-1">
-                {link(l.key, (active) =>
-                  cx(
-                    'relative flex h-11 items-center justify-center',
-                    active ? 'font-semibold text-white after:absolute after:inset-x-3 after:bottom-0 after:h-[2px] after:bg-accent' : 'text-white/70',
-                  ),
-                )}
-              </li>
-            ))}
+        <ul className="flex px-1 text-[12.5px]">
+          {links.map((l) => (
+            <li key={l.key} className="min-w-0 flex-1">
+              {link(l.key, t.navShort[l.key], (active) =>
+                cx(
+                  'relative flex h-11 items-center justify-center px-1 whitespace-nowrap',
+                  active ? 'font-semibold text-white after:absolute after:inset-x-2 after:bottom-0 after:h-[2px] after:bg-accent' : 'text-white/70',
+                ),
+              )}
+            </li>
+          ))}
         </ul>
       </nav>
     </header>

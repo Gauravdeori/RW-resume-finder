@@ -37,6 +37,9 @@ const en = {
   brandBottom: '—Walters',
   brandLabel: 'Robert Walters',
   nav: { upload: 'Upload Resume', dashboard: 'Dashboard', search: 'Search', admin: 'Admin' },
+  /** Shorter labels for the phone tab strip. */
+  navShort: { upload: 'Upload', dashboard: 'Dashboard', search: 'Search', admin: 'Admin' },
+  homeLabel: 'Resume Finder home',
   mainNav: 'Main',
   signOut: 'Sign out',
   language: 'Language',
@@ -332,7 +335,79 @@ const en = {
     detailFile: 'File',
   },
 
-  footer: 'Prototype with sample data. Every candidate and file shown is invented.',
+  /** Admin page (dummy users and activity; search settings really apply). */
+  admin: {
+    eyebrow: 'Robert Walters Japan · Workspace',
+    title: 'Admin',
+    statUsers: 'Users',
+    statActive: 'Active this week',
+    statInvites: 'Pending invites',
+    statConversions: 'Conversions on dashboard',
+    usersTitle: 'Users',
+    usersSub: 'Who can use Resume Studio and Resume Finder in this workspace.',
+    invite: 'Invite user',
+    inviteName: 'Name',
+    inviteEmail: 'Work email',
+    inviteRole: 'Role',
+    sendInvite: 'Send invite',
+    errName: 'Enter a name.',
+    errEmail: 'Enter a valid email address.',
+    errDuplicate: 'This email address is already in the list.',
+    invited: (name: string) => `Invite sent to ${name}.`,
+    role: { admin: 'Admin', recruiter: 'Recruiter', viewer: 'Viewer' } as Record<'admin' | 'recruiter' | 'viewer', string>,
+    status: { active: 'Active', invited: 'Invited', deactivated: 'Deactivated' } as Record<'active' | 'invited' | 'deactivated', string>,
+    you: '(you)',
+    lastActive: (when: string) => `Last active ${when}`,
+    neverActive: 'Not signed in yet',
+    deactivate: 'Deactivate',
+    activate: 'Activate',
+    resend: 'Resend invite',
+    roleFor: (name: string) => `Role for ${name}`,
+    removeUser: (name: string) => `Remove ${name}`,
+    settingsTitle: 'Search settings',
+    settingsSub: 'Changes apply to the Search page straight away.',
+    setting: { gender: 'Gender filter', jd: 'Start from a job description' } as Record<'gender' | 'jd', string>,
+    settingHelp: {
+      gender: 'Some countries do not allow filtering by gender. When off, the filter is hidden and ignored in every search.',
+      jd: 'Lets recruiters paste a job description to fill the filters.',
+    } as Record<'gender' | 'jd', string>,
+    defaultLang: 'Default language for new users',
+    langName: { en: 'English', ja: 'Japanese' } as Record<'en' | 'ja', string>,
+    demoTitle: 'Demo data',
+    demoSub: 'Put saved searches, dashboard conversions, users, settings and activity back to the sample data. Handy before a demo.',
+    reset: 'Reset demo data',
+    resetTitle: 'Reset demo data?',
+    resetBody: 'Saved searches, dashboard conversions, users, settings and activity go back to the sample data. Changes you made are lost.',
+    resetConfirm: 'Reset',
+    activityTitle: 'Recent activity',
+    activityEmpty: 'No activity yet.',
+    act: {
+      login: (a: string) => `${a} signed in`,
+      export: (a: string, b: string) => `${a} exported ${b}`,
+      search: (a: string, b: string) => `${a} saved the search “${b}”`,
+      invite: (a: string) => `Invited ${a}`,
+      resend: (a: string) => `Resent the invite to ${a}`,
+      role: (a: string, b: string) => `Changed ${a}'s role to ${b}`,
+      activate: (a: string) => `Activated ${a}`,
+      deactivate: (a: string) => `Deactivated ${a}`,
+      remove: (a: string) => `Removed ${a}`,
+      settingOn: (a: string) => `Turned on: ${a}`,
+      settingOff: (a: string) => `Turned off: ${a}`,
+      lang: (a: string) => `Default language set to ${a}`,
+      reset: 'Demo data reset',
+    },
+    ago: (iso: string) => {
+      const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+      if (m < 1) return 'just now';
+      if (m < 60) return `${m} min ago`;
+      const h = Math.round(m / 60);
+      if (h < 24) return `${h} h ago`;
+      const d = Math.round(h / 24);
+      return d === 1 ? '1 day ago' : `${d} days ago`;
+    },
+  },
+
+  footer: 'Prototype with sample data. Every candidate, file and person shown is invented.',
 };
 
 export type Dict = typeof en;
@@ -343,6 +418,8 @@ const ja: Dict = {
   brandBottom: '—Walters',
   brandLabel: 'Robert Walters',
   nav: { upload: '履歴書をアップロード', dashboard: 'ダッシュボード', search: '候補者検索', admin: '管理' },
+  navShort: { upload: 'アップロード', dashboard: 'ダッシュボード', search: '検索', admin: '管理' },
+  homeLabel: 'Resume Finder ホーム',
   mainNav: 'メイン',
   signOut: 'サインアウト',
   language: '言語',
@@ -634,7 +711,77 @@ const ja: Dict = {
     detailFile: 'ファイル',
   },
 
-  footer: 'サンプルデータを使用したプロトタイプです。表示される候補者とファイルはすべて架空のものです。',
+  admin: {
+    eyebrow: 'Robert Walters Japan ・ ワークスペース',
+    title: '管理',
+    statUsers: 'ユーザー',
+    statActive: '今週のアクティブ',
+    statInvites: '招待中',
+    statConversions: 'ダッシュボードの変換',
+    usersTitle: 'ユーザー',
+    usersSub: 'このワークスペースで Resume Studio と Resume Finder を使えるメンバーです。',
+    invite: 'ユーザーを招待',
+    inviteName: '名前',
+    inviteEmail: '仕事用メールアドレス',
+    inviteRole: '権限',
+    sendInvite: '招待を送信',
+    errName: '名前を入力してください。',
+    errEmail: '有効なメールアドレスを入力してください。',
+    errDuplicate: 'このメールアドレスはすでに登録されています。',
+    invited: (name) => `${name} さんに招待を送信しました。`,
+    role: { admin: '管理者', recruiter: 'リクルーター', viewer: '閲覧のみ' },
+    status: { active: '有効', invited: '招待中', deactivated: '無効' },
+    you: '（あなた）',
+    lastActive: (when) => `最終利用 ${when}`,
+    neverActive: 'まだサインインしていません',
+    deactivate: '無効にする',
+    activate: '有効にする',
+    resend: '招待を再送',
+    roleFor: (name) => `${name} さんの権限`,
+    removeUser: (name) => `${name} さんを削除`,
+    settingsTitle: '検索の設定',
+    settingsSub: '変更はすぐに検索ページへ反映されます。',
+    setting: { gender: '性別フィルター', jd: '求人票から始める' },
+    settingHelp: {
+      gender: '国によっては性別での絞り込みが認められていません。オフにすると、このフィルターは非表示になり、すべての検索で無視されます。',
+      jd: '求人票を貼り付けて条件を自動入力できるようにします。',
+    },
+    defaultLang: '新規ユーザーの既定の言語',
+    langName: { en: '英語', ja: '日本語' },
+    demoTitle: 'デモデータ',
+    demoSub: '保存した検索、ダッシュボードの変換、ユーザー、設定、アクティビティをサンプルデータに戻します。デモの前に便利です。',
+    reset: 'デモデータをリセット',
+    resetTitle: 'デモデータをリセットしますか？',
+    resetBody: '保存した検索、ダッシュボードの変換、ユーザー、設定、アクティビティがサンプルデータに戻ります。行った変更は失われます。',
+    resetConfirm: 'リセット',
+    activityTitle: '最近のアクティビティ',
+    activityEmpty: 'アクティビティはまだありません。',
+    act: {
+      login: (a) => `${a} さんがサインインしました`,
+      export: (a, b) => `${a} さんが ${b} をエクスポートしました`,
+      search: (a, b) => `${a} さんが検索「${b}」を保存しました`,
+      invite: (a) => `${a} さんを招待しました`,
+      resend: (a) => `${a} さんに招待を再送しました`,
+      role: (a, b) => `${a} さんの権限を「${b}」に変更しました`,
+      activate: (a) => `${a} さんを有効にしました`,
+      deactivate: (a) => `${a} さんを無効にしました`,
+      remove: (a) => `${a} さんを削除しました`,
+      settingOn: (a) => `オンにしました：${a}`,
+      settingOff: (a) => `オフにしました：${a}`,
+      lang: (a) => `既定の言語を${a}に設定しました`,
+      reset: 'デモデータをリセットしました',
+    },
+    ago: (iso) => {
+      const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+      if (m < 1) return 'たった今';
+      if (m < 60) return `${m} 分前`;
+      const h = Math.round(m / 60);
+      if (h < 24) return `${h} 時間前`;
+      return `${Math.round(h / 24)} 日前`;
+    },
+  },
+
+  footer: 'サンプルデータを使用したプロトタイプです。表示される候補者・ファイル・人物はすべて架空のものです。',
 };
 
 export const DICTS: Record<Lang, Dict> = { en, ja };

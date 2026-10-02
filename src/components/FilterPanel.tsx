@@ -22,10 +22,15 @@ export function FilterPanel({
   filters,
   onChange,
   onJdFill,
+  showGender = true,
+  showJdFill = true,
 }: {
   filters: Filters;
   onChange: (p: Partial<Filters>) => void;
   onJdFill: (p: Partial<Filters>) => void;
+  /** Admin settings: the gender filter can be switched off per country; the JD panel can be hidden. */
+  showGender?: boolean;
+  showJdFill?: boolean;
 }) {
   const { t } = useI18n();
   const f = filters;
@@ -36,7 +41,7 @@ export function FilterPanel({
 
   return (
     <div aria-label={t.filtersLabel} role="region" className="-mx-4 bg-card px-4 sm:mx-0 sm:px-5 md:px-6">
-      <JdPanel onFill={onJdFill} />
+      {showJdFill && <JdPanel onFill={onJdFill} />}
 
       <FilterRow label={t.rowName}>
         <div className={`grid grid-cols-2 gap-3 ${CONTROLS}`}>
@@ -87,15 +92,17 @@ export function FilterPanel({
         <AgeFilter filters={f} onChange={onChange} />
       </FilterRow>
 
-      <FilterRow label={t.rowGender}>
-        <div role="group" aria-label={t.rowGender} className="flex flex-wrap gap-2">
-          {GENDERS.map((g) => (
-            <Toggle key={g} on={f.genders.includes(g)} onClick={() => onChange({ genders: toggleIn(f.genders, g) })}>
-              {t.gender[g]}
-            </Toggle>
-          ))}
-        </div>
-      </FilterRow>
+      {showGender && (
+        <FilterRow label={t.rowGender}>
+          <div role="group" aria-label={t.rowGender} className="flex flex-wrap gap-2">
+            {GENDERS.map((g) => (
+              <Toggle key={g} on={f.genders.includes(g)} onClick={() => onChange({ genders: toggleIn(f.genders, g) })}>
+                {t.gender[g]}
+              </Toggle>
+            ))}
+          </div>
+        </FilterRow>
+      )}
 
       <FilterRow label={t.rowSeniority}>
         <div role="group" aria-label={t.rowSeniority} className={`flex flex-wrap gap-2 ${CONTROLS}`}>
