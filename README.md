@@ -1,7 +1,7 @@
-﻿# Resume Finder â€” clickable prototype
+# Resume Finder â€” clickable prototype
 
 Candidate search module for Resume Studio (Kenja Ã— Robert Walters Japan).
-Prototype with sample data: 4,860 invented candidates, generated with a seeded random generator so the data is the same on every load. No backend.
+Prototype with sample data: 4,860 invented candidates and 15 invented conversions, generated with a seeded random generator so the data is the same on every load. No backend.
 
 ## Run
 
@@ -35,6 +35,9 @@ Deploy: Netlify / Vercel / Render static site with build command `npm run build`
 | Fill filters from a job description | `components/JdPanel.tsx`, `lib/jdParser.ts` |
 | EN / æ—¥æœ¬èªž labels (single file) | `lib/i18n.ts` |
 | Light / dark switch (defaults to device, remembered) | `components/ThemeSwitch.tsx`, `lib/theme.ts`, `src/index.css` |
+| Upload Resume page (dummy: pick or drop a file, settings, simulated conversion) | `components/UploadPage.tsx` |
+| Dashboard page (dummy: stats, last 15 conversions, edit details, delete with undo) | `components/DashboardPage.tsx`, `lib/conversions.ts` |
+| Page switching (`#/upload`, `#/dashboard`, `#/search`; works on any static host) | `lib/route.ts`, `components/TopBar.tsx` |
 
 ## Search rules (`lib/filter.ts`)
 

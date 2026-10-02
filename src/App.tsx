@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CountRail } from './components/CountRail';
 import { CvModal } from './components/CvModal';
+import { DashboardPage } from './components/DashboardPage';
 import { FilterPanel } from './components/FilterPanel';
 import { ResultsList } from './components/ResultsList';
 import { SaveSearchModal } from './components/SaveSearchModal';
 import { TopBar } from './components/TopBar';
 import { Trail, type TrailItem } from './components/Trail';
+import { UploadPage, type UploadSettings } from './components/UploadPage';
+import { KEEP_LAST, loadConversions, newConversion, storeConversions, type Conversion } from './lib/conversions';
 import { CANDIDATES } from './lib/data';
 import { suggestName } from './lib/describe';
 import { chainSteps, countMatches, sortCandidates, type SortKey } from './lib/filter';
 import { useI18n } from './lib/i18n';
+import { useHashRoute } from './lib/route';
 import { loadSaved, newSavedId, storeSaved, type SavedSearch } from './lib/savedSearches';
 import { cloneFilters, emptyFilters, type Candidate, type Filters } from './lib/types';
 
@@ -55,6 +59,18 @@ type View = 'panel' | 'results';
 
 export default function App() {
   const { t } = useI18n();
+  // Upload Resume, Dashboard and Search are separate pages; search state is kept while you move between them.
+  const [route, go] = useHashRoute();
+
+  // Dummy Resume Studio conversions, newest first, trimmed to the last KEEP_LAST.
+  const [conversions, setConversions] = useState<Conversion[]>(loadConversions);
+  useEffect(() => storeConversions(conversions), [conversions]);
+
+  const addConversion = useCallback((file: { name: string; size: number }, settings: UploadSettings) => {
+    setConversions((list) => [newConversion(list, file, settings), ...list].slice(0, KEEP_LAST));
+    // Same rule as newConversion: cross-language conversions wait for review.
+    return { status: settings.source === settings.target ? ('exported' as const) : ('review' as const) };
+  }, []);
 
   // Search within results: each committed step stores its own filters.
   // A step's result is its filters applied to the previous step's result.
@@ -139,6 +155,7 @@ export default function App() {
   };
 
   const runSaved = (s: SavedSearch) => {
+    go('search');
     const next = s.steps.map(cloneFilters);
     setSteps(next);
     setEditIndex(next.length - 1);
@@ -180,18 +197,31 @@ export default function App() {
   }
 
   const showTrailOnPanel = steps.length > 0;
+  /** Only the search panel has the fixed count bar on phones, which needs room at the bottom. */
+  const searchPanel = route === 'search' && view === 'panel';
 
   return (
-    <div className="flex min-h-screen flex-col bg-page text-ink">
+    <div className={`flex min-h-screen flex-col text-ink ${route === 'search' ? 'bg-page' : 'studio-bg'}`}>
       <TopBar
+        route={route}
         saved={saved}
         onRunSaved={runSaved}
         onDeleteSaved={(id) => setSaved((list) => list.filter((s) => s.id !== id))}
-        onSearchNav={newSearch}
       />
 
-      <main className={`mx-auto w-full max-w-[1200px] flex-1 px-4 pt-5 sm:pt-8 md:px-8 ${view === 'panel' ? 'pb-24 lg:pb-12' : 'pb-12'}`}>
-        {view === 'panel' ? (
+      <main
+        className={`mx-auto w-full flex-1 px-4 pt-5 sm:pt-8 md:px-8 ${route === 'search' ? 'max-w-[1200px]' : 'max-w-[1300px]'} ${searchPanel ? 'pb-24 lg:pb-12' : 'pb-12'}`}
+      >
+        {route === 'upload' ? (
+          <UploadPage onConverted={addConversion} onOpenDashboard={() => go('dashboard')} />
+        ) : route === 'dashboard' ? (
+          <DashboardPage
+            list={conversions}
+            onDelete={(id) => setConversions((list) => list.filter((c) => c.id !== id))}
+            onRestore={(c) => setConversions((list) => [...list, c].sort((a, b) => b.id - a.id).slice(0, KEEP_LAST))}
+            onUpload={() => go('upload')}
+          />
+        ) : view === 'panel' ? (
           <>
             <div className="flex items-end justify-between gap-4">
               <h1 className="text-[26px] leading-tight font-extrabold tracking-tight sm:text-[32px]">{t.pageTitle}</h1>
@@ -255,7 +285,9 @@ export default function App() {
         )}
       </main>
 
-      <footer className={`mx-auto w-full max-w-[1200px] px-4 pt-2 text-[12px] text-muted md:px-8 ${view === 'panel' ? 'pb-28 lg:pb-8' : 'pb-8'}`}>
+      <footer
+        className={`mx-auto w-full px-4 pt-2 text-[12px] text-muted md:px-8 ${route === 'search' ? 'max-w-[1200px]' : 'max-w-[1300px]'} ${searchPanel ? 'pb-28 lg:pb-8' : 'pb-8'}`}
+      >
         {t.footer}
       </footer>
 

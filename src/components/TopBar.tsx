@@ -1,4 +1,5 @@
 import { useI18n, type Lang } from '../lib/i18n';
+import { hrefFor, type Route } from '../lib/route';
 import type { SavedSearch } from '../lib/savedSearches';
 import { cx } from './controls';
 import { SavedSearches } from './SavedSearches';
@@ -9,24 +10,41 @@ const LANGS: { id: Lang; label: string }[] = [
   { id: 'ja', label: '日本語' },
 ];
 
+type NavKey = Route | 'admin';
+
 export function TopBar({
+  route,
   saved,
   onRunSaved,
   onDeleteSaved,
-  onSearchNav,
 }: {
+  route: Route;
   saved: SavedSearch[];
   onRunSaved: (s: SavedSearch) => void;
   onDeleteSaved: (id: string) => void;
-  onSearchNav: () => void;
 }) {
   const { t, lang, setLang } = useI18n();
-  const links = [
+  const links: { key: NavKey; label: string }[] = [
     { key: 'upload', label: t.nav.upload },
     { key: 'dashboard', label: t.nav.dashboard },
     { key: 'search', label: t.nav.search },
     { key: 'admin', label: t.nav.admin },
   ];
+  // Admin is not part of this prototype: it is shown for context but goes nowhere.
+  const link = (key: NavKey, className: (active: boolean) => string) => {
+    const active = key === route;
+    return (
+      <a
+        href={key === 'admin' ? '#' : hrefFor(key)}
+        aria-current={active ? 'page' : undefined}
+        aria-disabled={key === 'admin' ? true : undefined}
+        onClick={key === 'admin' ? (e) => e.preventDefault() : undefined}
+        className={className(active)}
+      >
+        {links.find((l) => l.key === key)?.label}
+      </a>
+    );
+  };
 
   return (
     <header className="border-b border-topbar-border bg-topbar text-white">
@@ -42,27 +60,17 @@ export function TopBar({
 
         <nav aria-label={t.mainNav} className="hidden md:block">
           <ul className="flex items-center gap-6 text-[12px]">
-            {links.map((l) => {
-              const active = l.key === 'search';
-              return (
-                <li key={l.key}>
-                  <a
-                    href="#"
-                    aria-current={active ? 'page' : undefined}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (active) onSearchNav();
-                    }}
-                    className={cx(
-                      'relative inline-block py-1',
-                      active ? 'text-white after:absolute after:inset-x-0 after:-bottom-1 after:h-[2px] after:bg-accent' : 'text-white/75 hover:text-white',
-                    )}
-                  >
-                    {l.label}
-                  </a>
-                </li>
-              );
-            })}
+            {links.map((l) => (
+              <li key={l.key}>
+                {link(l.key, (active) =>
+                  cx(
+                    'relative inline-block py-1',
+                    active ? 'text-white after:absolute after:inset-x-0 after:-bottom-1 after:h-[2px] after:bg-accent' : 'text-white/75 hover:text-white',
+                    l.key === 'admin' && 'cursor-default',
+                  ),
+                )}
+              </li>
+            ))}
           </ul>
         </nav>
 
@@ -85,6 +93,22 @@ export function TopBar({
           <SavedSearches list={saved} onRun={onRunSaved} onDelete={onDeleteSaved} />
         </div>
       </div>
+      <nav aria-label={t.mainNav} className="border-t border-white/10 md:hidden">
+        <ul className="flex px-2 text-[13px]">
+          {links
+            .filter((l) => l.key !== 'admin')
+            .map((l) => (
+              <li key={l.key} className="flex-1">
+                {link(l.key, (active) =>
+                  cx(
+                    'relative flex h-11 items-center justify-center',
+                    active ? 'font-semibold text-white after:absolute after:inset-x-3 after:bottom-0 after:h-[2px] after:bg-accent' : 'text-white/70',
+                  ),
+                )}
+              </li>
+            ))}
+        </ul>
+      </nav>
     </header>
   );
 }
