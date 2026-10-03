@@ -1,34 +1,43 @@
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { useI18n } from '../lib/i18n';
 import type { Candidate } from '../lib/types';
 
-/** Drawn placeholder for page 1 of the converted CV. Always paper-white, also in dark mode. */
+/** Fixed card height: the results page works out how many cards fit the screen from it. */
+export const CARD_H = 152;
+
+/** Page 1 of the converted CV as a tiny inline SVG (no images to load). Paper-white in both themes. */
 export function CvThumb() {
-  const grey = 'block h-px bg-[#c4c4c4]';
-  const red = 'block h-[2px] w-4 bg-[#FF4D64]';
   return (
-    <span
+    <svg
+      viewBox="0 0 80 100"
       aria-hidden
-      className="flex h-[76px] w-[60px] flex-col gap-[4px] rounded border border-black/10 bg-white px-2 pt-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] duration-150 group-hover/thumb:-translate-y-0.5 group-hover/thumb:shadow-[0_6px_16px_rgba(0,0,0,0.16)] md:h-[100px] md:w-[80px] md:gap-[5px] md:px-2.5 md:pt-3"
+      className="h-[70px] w-[56px] rounded shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-transform duration-150 group-hover/thumb:-translate-y-0.5"
     >
-      <span className="block h-[3px] w-7 bg-[#222]" />
-      <span className={grey} />
-      <span className={`${grey} w-3/4`} />
-      <span className={red} />
-      <span className={grey} />
-      <span className={grey} />
-      <span className={red} />
-      <span className={grey} />
-      <span className={`${grey} w-2/3`} />
-    </span>
+      <rect x="0.5" y="0.5" width="79" height="99" rx="3" fill="#fff" stroke="rgba(0,0,0,0.1)" />
+      <rect x="10" y="12" width="28" height="3" fill="#222" />
+      <g fill="#c4c4c4">
+        <rect x="10" y="21" width="60" height="1" />
+        <rect x="10" y="27" width="44" height="1" />
+        <rect x="10" y="44" width="60" height="1" />
+        <rect x="10" y="50" width="60" height="1" />
+        <rect x="10" y="67" width="60" height="1" />
+        <rect x="10" y="73" width="40" height="1" />
+      </g>
+      <g fill="#FF4D64">
+        <rect x="10" y="35" width="16" height="2" />
+        <rect x="10" y="58" width="16" height="2" />
+      </g>
+    </svg>
   );
 }
 
-function Fact({ label, children }: { label: string; children: ReactNode }) {
+function Fact({ label, children, title }: { label: string; children: ReactNode; title?: string }) {
   return (
-    <div>
-      <dt className="text-[12px] text-muted">{label}</dt>
-      <dd className="mt-0.5 text-[14px] leading-snug font-medium">{children}</dd>
+    <div className="min-w-0">
+      <dt className="text-[10.5px] leading-[13px] text-muted">{label}</dt>
+      <dd className="mt-0.5 truncate text-[12.5px] leading-[16px] font-medium" title={title}>
+        {children}
+      </dd>
     </div>
   );
 }
@@ -36,84 +45,52 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 /** Gaishi score as a small rounded red pill. */
 export function GaishiBadge({ score }: { score: string }) {
   return (
-    <span className="inline-flex h-5 min-w-[30px] items-center justify-center rounded-full bg-accent px-2 text-[11px] font-bold text-on-accent">
+    <span className="inline-flex h-[18px] min-w-[28px] items-center justify-center rounded-full bg-accent px-2 text-[11px] font-bold text-on-accent">
       {score}
     </span>
   );
 }
 
-/** Card layout shared by result rows and their loading skeletons. */
-const ROW_GRID =
-  'grid grid-cols-[minmax(0,1fr)_60px] gap-x-4 gap-y-4 rounded-xl border border-line bg-card px-4 py-5 shadow-card sm:px-5 md:grid-cols-[minmax(0,1fr)_252px_88px] md:gap-6 md:px-6';
-
-export function CandidateRow({ c, index, onOpenCv }: { c: Candidate; index: number; onOpenCv: (c: Candidate) => void }) {
+/**
+ * One result as a compact card of fixed height: name, role, one line of context, six key facts, CV thumbnail.
+ * Memoised: re-renders only when its candidate or the language changes.
+ */
+export const CandidateRow = memo(function CandidateRow({ c, onOpenCv }: { c: Candidate; onOpenCv: (c: Candidate) => void }) {
   const { t } = useI18n();
   const name = t.displayName(c);
-  const previously = c.previousCompanies.map((p) => p.company).slice(0, 3);
+  const school = t.schoolWithClass(c.school, c.schoolClass);
 
   return (
-    // Phones: name and summary with the CV thumbnail beside them, key facts underneath.
-    // Desktop: summary | key facts | thumbnail.
-    <li
-      className={`${ROW_GRID} anim-fade-up transition-[border-color,box-shadow,transform] duration-150 hover:border-ink/25 hover:shadow-hover`}
-      style={{ animationDelay: `${Math.min(index % 10, 9) * 30}ms` }}
+    <article
+      className="anim-fade-up flex gap-4 overflow-hidden rounded-xl border border-line bg-card px-4 py-2.5 shadow-card hover:border-ink/25 hover:shadow-hover"
+      style={{ height: CARD_H }}
     >
-      <div className="col-start-1 row-start-1 min-w-0">
-        <h3 className="text-[17px] leading-tight font-bold tracking-[-0.01em]">{name}</h3>
-        <p className="mt-1 text-[14px] font-medium">{t.titleAt(c)}</p>
-        <p className="mt-2 max-w-[460px] text-[13px] leading-relaxed text-muted">{t.summary(c)}</p>
-        {previously.length > 0 && (
-          <p className="mt-2 text-[13px] text-muted">
-            {t.previouslyAt} <span className="text-ink">{previously.join(', ')}</span>
-          </p>
-        )}
+      <div className="min-w-0 flex-1">
+        <h2 className="truncate text-[16px] leading-[20px] font-bold tracking-[-0.01em]">{name}</h2>
+        <p className="mt-0.5 truncate text-[13px] leading-[18px] font-medium">{t.titleAt(c)}</p>
+        <p className="mt-0.5 truncate text-[12px] leading-[16px] text-muted">{t.cardMeta(c)}</p>
+        <dl className="mt-1.5 grid grid-cols-3 gap-x-3 gap-y-1">
+          <Fact label={t.factAge}>{c.age}</Fact>
+          <Fact label={t.factSeniority}>{t.seniorityFact(c.seniority)}</Fact>
+          <Fact label={t.factGaishi}>
+            <GaishiBadge score={c.gaishiScore} />
+          </Fact>
+          <Fact label={t.factEnglish}>{t.level[c.englishLevel]}</Fact>
+          <Fact label={t.factJapanese}>{t.level[c.japaneseLevel]}</Fact>
+          <Fact label={t.factSchool} title={school}>
+            {school}
+          </Fact>
+        </dl>
       </div>
 
-      <dl className="col-span-2 row-start-2 grid grid-cols-2 content-start gap-x-6 gap-y-2.5 border-t border-line pt-4 md:col-span-1 md:col-start-2 md:row-start-1 md:gap-y-3 md:border-t-0 md:pt-0">
-        <Fact label={t.factAge}>{c.age}</Fact>
-        <Fact label={t.factSeniority}>{t.seniorityFact(c.seniority)}</Fact>
-        <Fact label={t.factEnglish}>{t.level[c.englishLevel]}</Fact>
-        <Fact label={t.factJapanese}>{t.level[c.japaneseLevel]}</Fact>
-        <Fact label={t.factGaishi}>
-          <GaishiBadge score={c.gaishiScore} />
-        </Fact>
-        <Fact label={t.factSchool}>{t.schoolWithClass(c.school, c.schoolClass)}</Fact>
-      </dl>
-
-      <div className="col-start-2 row-start-1 flex flex-col items-end gap-2 md:col-start-3 md:justify-between">
+      <div className="flex flex-none flex-col items-center justify-between">
         <button type="button" onClick={() => onOpenCv(c)} aria-label={t.openCvFor(name)} className="group/thumb block rounded">
           <CvThumb />
         </button>
-        <button
-          type="button"
-          onClick={() => onOpenCv(c)}
-          className="text-[12px] whitespace-nowrap underline underline-offset-2 transition-colors duration-150 hover:text-accent md:text-[13px]"
-        >
+        <button type="button" onClick={() => onOpenCv(c)} className="text-[12px] whitespace-nowrap underline underline-offset-2 hover:text-accent">
           {t.openCv}
         </button>
       </div>
-    </li>
+    </article>
   );
-}
-
-/** Placeholder row shown briefly while a search step loads. */
-export function CandidateRowSkeleton() {
-  return (
-    <li aria-hidden className={ROW_GRID}>
-      <div className="col-start-1 row-start-1 flex flex-col gap-2.5">
-        <span className="skeleton h-4 w-40" />
-        <span className="skeleton h-3.5 w-56" />
-        <span className="skeleton mt-1 h-3 w-full max-w-[420px]" />
-        <span className="skeleton h-3 w-4/5 max-w-[360px]" />
-      </div>
-      <div className="col-span-2 row-start-2 grid grid-cols-2 gap-x-6 gap-y-3 md:col-span-1 md:col-start-2 md:row-start-1">
-        {Array.from({ length: 6 }, (_, i) => (
-          <span key={i} className="skeleton h-8" />
-        ))}
-      </div>
-      <div className="col-start-2 row-start-1 flex justify-end md:col-start-3">
-        <span className="skeleton h-[76px] w-[60px] md:h-[100px] md:w-[80px]" />
-      </div>
-    </li>
-  );
-}
+});
