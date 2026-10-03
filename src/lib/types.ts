@@ -105,9 +105,6 @@ export interface Filters {
   schoolName: string;
 }
 
-/** The four fields the age control reads and writes. */
-export type AgeFields = Pick<Filters, 'ageMode' | 'decades' | 'ageMin' | 'ageMax'>;
-
 export function emptyFilters(): Filters {
   return {
     lastName: '',

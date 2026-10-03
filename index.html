@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="description" content="Resume Finder: search candidate CVs with live filters." />
     <title>Resume Finder</title>
     <script>
       // Apply a saved light/dark choice before first paint, so the page never flashes the wrong theme.
@@ -16,36 +15,13 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23222'/%3E%3Crect x='7' y='22' width='18' height='3' fill='%23FF4D64'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Outfit as one variable font covering only the weights the UI uses (400 to 800): one file, one swap.
-         Loaded without blocking first paint; font-display: swap. -->
     <link
-      rel="preload"
-      as="style"
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400..800&display=swap"
-      onload="this.onload=null;this.rel='stylesheet'"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
     />
-    <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400..800&display=swap" />
-    </noscript>
   </head>
   <body>
-    <div id="root">
-      <!-- Static shell, painted before the script runs; React replaces it with the same top bar. -->
-      <div class="one-screen flex h-dvh flex-col bg-page">
-        <header class="sticky top-0 z-30 flex-none border-b border-topbar-border bg-topbar text-white">
-          <div class="mx-auto flex h-14 max-w-[1600px] items-center gap-4 px-4 md:px-8 lg:gap-7 lg:px-10">
-            <span class="text-[12px] leading-[1.05] font-extrabold tracking-tight">
-              <span class="block">Robert—</span>
-              <span class="block">—Walters</span>
-            </span>
-          </div>
-          <div class="h-11 border-t border-white/10 md:hidden" style="box-sizing: content-box"></div>
-          <!-- Lays out one Japanese word during first paint, so the system's Japanese font is loaded before the
-               script runs rather than in the middle of it (the EN / 日本語 switch needs it). Invisible, takes no space. -->
-          <span aria-hidden="true" style="position: absolute; visibility: hidden">日本語</span>
-        </header>
-      </div>
-    </div>
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

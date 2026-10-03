@@ -1,9 +1,9 @@
 import type { Dict } from './i18n';
-import { GAISHI_SCORES, SENIORITIES, type AgeFields, type Filters } from './types';
+import { GAISHI_SCORES, SENIORITIES, type Filters } from './types';
 import type { SavedSearch } from './savedSearches';
 
 /** Caption under the age slider: "Any age" | "30s, 40s" | "Ages 35 to 44". */
-export function ageCaption(f: AgeFields, t: Dict): string {
+export function ageCaption(f: Filters, t: Dict): string {
   if (f.ageMode === 'decades' && f.decades.length) return [...f.decades].sort((a, b) => a - b).map(t.decade).join(', ');
   if (f.ageMode === 'range') return t.ageRange(f.ageMin, f.ageMax);
   return t.anyAge;

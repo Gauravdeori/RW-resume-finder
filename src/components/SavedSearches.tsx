@@ -45,6 +45,7 @@ export function SavedSearches({
         type="button"
         aria-expanded={open}
         aria-controls={menuId}
+        aria-label={t.savedCount(list.length)}
         onClick={() => setOpen((o) => !o)}
         className="flex h-8 items-center gap-2 border border-white/60 px-2.5 text-[12px] text-white hover:border-white sm:px-3"
       >
