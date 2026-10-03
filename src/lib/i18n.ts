@@ -476,6 +476,7 @@ const en = {
       'Press “Show candidates” to see the matching CVs.',
       '“Search within these results” locks the list as a step, so you can add more filters on top.',
       'Click a step in the trail to go back to it.',
+      'The small box beside each filter name means Required. Untick it to make that filter nice to have: nobody is left out, and candidates who match rank first under Best CVs.',
     ],
     shortcuts: [
       ['Ctrl + Z', 'Undo the last filter change'],
@@ -484,6 +485,14 @@ const en = {
       ['← →  ↑ ↓', 'Move through the menu bar and menus'],
     ] as [string, string][],
   },
+
+  /** The small Required box beside each filter name. Unticked = nice to have. */
+  required: 'Required',
+  requiredFor: (label: string) => `${label}: required`,
+  requiredHint: 'Ticked: required, candidates must match. Untick to make it nice to have: nobody is left out, and candidates who match rank first.',
+  niceTag: 'nice to have',
+  prefMatch: (n: number, total: number) => `Matches ${n} of ${total} nice-to-haves`,
+  niceRanked: (n: number) => (n === 1 ? 'Ranked by 1 nice-to-have' : `Ranked by ${n} nice-to-haves`),
 
   footer: 'Prototype with sample data. Every candidate, file and person shown is invented.',
 };

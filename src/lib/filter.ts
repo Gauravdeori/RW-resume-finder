@@ -12,6 +12,7 @@ import {
   SENIORITIES,
   type AgeFields,
   type Filters,
+  type RowKey,
   type GaishiScore,
   type SchoolClass,
   type Seniority,
@@ -113,71 +114,117 @@ function mask<T>(selected: readonly T[], list: readonly T[]): number {
   return m;
 }
 
+type RowTest = { key: RowKey; test: (i: number) => boolean };
+const GENDER_LIST = ['male', 'female', 'not_stated'];
+
 /**
- * Apply one step's filters to a result set.
- * Rules: inside one row ticked choices join with OR; rows join with AND; an empty row does not filter;
- * "at least" includes every higher level; text matches part of a word, ignoring case.
+ * One test per filter row that has something chosen (rows left empty do not filter).
+ * Rules: inside one row ticked choices join with OR; "at least" includes every higher level;
+ * text matches part of a word, ignoring case.
  */
-export function runFilter(input: Uint32Array, f: Filters): Uint32Array {
+function rowTests(f: Filters): RowTest[] {
+  const tests: RowTest[] = [];
+  const add = (key: RowKey, test: (i: number) => boolean) => tests.push({ key, test });
   const q = (s: string) => s.trim().toLowerCase();
+  const bits = (key: RowKey, m: number, col: Uint8Array) => {
+    if (m) add(key, (i) => ((m >> col[i]) & 1) === 1);
+  };
+
   const last = q(f.lastName);
   const first = q(f.firstName);
+  if (last || first)
+    add('name', (i) => {
+      const lc = CANDIDATES[i].lc;
+      return (!last || lc.last.includes(last)) && (!first || lc.first.includes(first));
+    });
   const current = q(f.currentCompany);
   const prev = f.previousCompanies.map(q).filter(Boolean);
+  if (current || prev.length)
+    add('company', (i) => {
+      const lc = CANDIDATES[i].lc;
+      if (current && !lc.current.includes(current)) return false;
+      return prev.every((p) => lc.prev.some((x) => x.includes(p)));
+    });
+  if (f.ageMode === 'decades' && f.decades.length) {
+    const decades = f.decades;
+    add('age', (i) => decades.includes(decadeOf(IX.age[i])));
+  } else if (f.ageMode === 'range') {
+    const lo = f.ageMin;
+    const hi = f.ageMax;
+    add('age', (i) => IX.age[i] >= lo && IX.age[i] <= hi);
+  }
+  bits('gender', mask(f.genders, GENDER_LIST), IX.gender);
+  bits('seniority', mask(f.seniority, SENIORITIES), IX.seniority);
+  bits('industry', mask(f.industries, INDUSTRIES), IX.industry);
+  bits('position', mask(f.positions, POSITIONS), IX.position);
+  bits('gaishi', mask(f.gaishiScores, GAISHI_SCORES), IX.gaishi);
+  if (f.foreign === 'never') add('foreign', (i) => IX.foreign[i] === 0);
+  else if (f.foreign !== 'any') {
+    const min = f.foreign === 'once' ? 1 : 2;
+    add('foreign', (i) => IX.foreign[i] >= min);
+  }
+  if (f.englishMin !== 'any') {
+    const min = LEVELS.indexOf(f.englishMin);
+    add('english', (i) => IX.english[i] >= min);
+  }
+  if (f.japaneseMin !== 'any') {
+    const min = LEVELS.indexOf(f.japaneseMin);
+    add('japanese', (i) => IX.japanese[i] >= min);
+  }
+  if (f.overseas === 'yes') add('overseas', (i) => IX.overseas[i] !== 0);
+  if (f.overseas === 'no') add('overseas', (i) => IX.overseas[i] === 0);
+  bits('degree', mask(f.degrees, DEGREES), IX.degree);
+  bits('schoolClass', mask(f.schoolClasses, SCHOOL_CLASSES), IX.schoolClass);
+  bits('major', mask(f.majors, MAJORS), IX.major);
   const school = q(f.schoolName);
-  const hasText = !!(last || first || current || prev.length || school);
+  if (school) add('school', (i) => CANDIDATES[i].lc.school.includes(school));
+  return tests;
+}
 
-  // Age: decades become an allowed [min, max] list; a range is one interval.
-  const decades = f.ageMode === 'decades' && f.decades.length ? f.decades : null;
-  const ageLo = f.ageMode === 'range' ? f.ageMin : 0;
-  const ageHi = f.ageMode === 'range' ? f.ageMax : 255;
-
-  const gender = mask(f.genders, ['male', 'female', 'not_stated']);
-  const seniority = mask(f.seniority, SENIORITIES);
-  const industry = mask(f.industries, INDUSTRIES);
-  const position = mask(f.positions, POSITIONS);
-  const gaishi = mask(f.gaishiScores, GAISHI_SCORES);
-  const degree = mask(f.degrees, DEGREES);
-  const schoolClass = mask(f.schoolClasses, SCHOOL_CLASSES);
-  const major = mask(f.majors, MAJORS);
-  const enMin = f.englishMin === 'any' ? 0 : LEVELS.indexOf(f.englishMin);
-  const jaMin = f.japaneseMin === 'any' ? 0 : LEVELS.indexOf(f.japaneseMin);
-  const foreignMin = f.foreign === 'once' ? 1 : f.foreign === 'twice' ? 2 : 0;
-  const foreignNever = f.foreign === 'never';
-  const overseas = f.overseas;
-
+/**
+ * Apply one step's filters to a result set. Rows join with AND. Only required rows filter: rows marked
+ * "nice to have" leave everyone in (they rank results instead, see preferenceScores).
+ */
+export function runFilter(input: Uint32Array, f: Filters): Uint32Array {
+  const optional = new Set(f.optional);
+  const tests = rowTests(f)
+    .filter((r) => !optional.has(r.key))
+    .map((r) => r.test);
+  if (!tests.length) return input;
   const out = new Uint32Array(input.length);
   let n = 0;
-  for (let k = 0; k < input.length; k++) {
+  next: for (let k = 0; k < input.length; k++) {
     const i = input[k];
-    const age = IX.age[i];
-    if (age < ageLo || age > ageHi) continue;
-    if (decades && !decades.includes(decadeOf(age))) continue;
-    if (gender && !((gender >> IX.gender[i]) & 1)) continue;
-    if (seniority && !((seniority >> IX.seniority[i]) & 1)) continue;
-    if (industry && !((industry >> IX.industry[i]) & 1)) continue;
-    if (position && !((position >> IX.position[i]) & 1)) continue;
-    if (gaishi && !((gaishi >> IX.gaishi[i]) & 1)) continue;
-    if (IX.english[i] < enMin || IX.japanese[i] < jaMin) continue;
-    if (IX.foreign[i] < foreignMin || (foreignNever && IX.foreign[i] !== 0)) continue;
-    if (overseas === 'yes' && IX.overseas[i] === 0) continue;
-    if (overseas === 'no' && IX.overseas[i] !== 0) continue;
-    if (degree && !((degree >> IX.degree[i]) & 1)) continue;
-    if (schoolClass && !((schoolClass >> IX.schoolClass[i]) & 1)) continue;
-    if (major && !((major >> IX.major[i]) & 1)) continue;
-    if (hasText) {
-      const lc = CANDIDATES[i].lc;
-      if (last && !lc.last.includes(last)) continue;
-      if (first && !lc.first.includes(first)) continue;
-      if (current && !lc.current.includes(current)) continue;
-      if (school && !lc.school.includes(school)) continue;
-      let ok = true;
-      for (const p of prev) if (!lc.prev.some((x) => x.includes(p))) ok = false;
-      if (!ok) continue;
-    }
+    for (const test of tests) if (!test(i)) continue next;
     out[n++] = i;
   }
   return out.subarray(0, n);
+}
+
+/** How many nice-to-have rows (over all steps) each candidate matches, indexed by candidate. */
+export interface Preferences {
+  scores: Uint8Array;
+  /** Number of nice-to-have rows in use. */
+  total: number;
+}
+
+/** Scores for the candidates in `set`; null when no row is marked nice to have. */
+export function preferenceScores(set: Uint32Array, steps: Filters[]): Preferences | null {
+  const tests = steps.flatMap((f) => {
+    const optional = new Set(f.optional);
+    return rowTests(f)
+      .filter((r) => optional.has(r.key))
+      .map((r) => r.test);
+  });
+  if (!tests.length) return null;
+  const scores = new Uint8Array(CANDIDATES.length);
+  for (let k = 0; k < set.length; k++) {
+    const i = set[k];
+    let s = 0;
+    for (const test of tests) if (test(i)) s++;
+    scores[i] = s;
+  }
+  return { scores, total: tests.length };
 }
 
 /** Results of each locked step: index 0 is every candidate, index i+1 is step i applied to index i. */
@@ -210,12 +257,25 @@ const byBest = (a: number, b: number) => {
 };
 let ORDER: Record<SortKey, Uint32Array> = { best: ALL, new: ALL };
 
-export function sortResults(set: Uint32Array, key: SortKey): Uint32Array {
+/**
+ * Order a result set. With nice-to-have rows, "Best CVs" puts candidates who match more of them first
+ * (keeping the usual order within each group); "New CVs" stays purely by date.
+ */
+export function sortResults(set: Uint32Array, key: SortKey, prefs?: Preferences | null): Uint32Array {
   member.fill(0);
   for (let k = 0; k < set.length; k++) member[set[k]] = 1;
   const order = ORDER[key];
   const out = new Uint32Array(set.length);
   let n = 0;
   for (let k = 0; k < order.length && n < set.length; k++) if (member[order[k]]) out[n++] = order[k];
-  return out;
+  if (!prefs || key !== 'best') return out;
+
+  // Stable bucket sort by score, highest first.
+  const { scores, total } = prefs;
+  const starts = new Uint32Array(total + 2);
+  for (let k = 0; k < out.length; k++) starts[total - scores[out[k]] + 1]++;
+  for (let b = 1; b < starts.length; b++) starts[b] += starts[b - 1];
+  const ranked = new Uint32Array(out.length);
+  for (let k = 0; k < out.length; k++) ranked[starts[total - scores[out[k]]]++] = out[k];
+  return ranked;
 }

@@ -63,6 +63,7 @@ function SearchList({
 export const SearchSide = memo(function SearchSide({
   count,
   ofLine,
+  note,
   saved,
   recent,
   showJdFill,
@@ -75,6 +76,8 @@ export const SearchSide = memo(function SearchSide({
 }: {
   count: number;
   ofLine: string;
+  /** "2 nice-to-haves rank matches first", when any filter is nice to have. */
+  note?: string;
   saved: SavedSearch[];
   recent: RecentSearch[];
   showJdFill: boolean;
@@ -100,6 +103,7 @@ export const SearchSide = memo(function SearchSide({
           {t.countMatch}
         </p>
         <p className="mt-0.5 text-[12px] leading-tight text-on-accent">{ofLine}</p>
+        {note && <p className="mt-1 text-[11.5px] leading-tight font-semibold text-white">★ {note}</p>}
       </div>
 
       <button

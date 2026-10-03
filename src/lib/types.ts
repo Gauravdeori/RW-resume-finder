@@ -109,7 +109,33 @@ export interface Filters {
   schoolClasses: SchoolClass[];
   majors: Major[];
   schoolName: string;
+  /**
+   * Filter rows marked "nice to have" (their Required box unticked). They do not leave anyone out;
+   * candidates who match them rank first. Every other row is required. Empty = all required.
+   */
+  optional: RowKey[];
 }
+
+/** One filter row: the unit that can be required or nice to have. */
+export const ROW_KEYS = [
+  'name',
+  'company',
+  'age',
+  'gender',
+  'seniority',
+  'industry',
+  'position',
+  'gaishi',
+  'foreign',
+  'english',
+  'japanese',
+  'overseas',
+  'degree',
+  'schoolClass',
+  'major',
+  'school',
+] as const;
+export type RowKey = (typeof ROW_KEYS)[number];
 
 /** The four fields the age control reads and writes. */
 export type AgeFields = Pick<Filters, 'ageMode' | 'decades' | 'ageMin' | 'ageMax'>;
@@ -137,6 +163,7 @@ export function emptyFilters(): Filters {
     schoolClasses: [],
     majors: [],
     schoolName: '',
+    optional: [],
   };
 }
 
@@ -144,6 +171,7 @@ export function emptyFilters(): Filters {
 export function normalizeFilters(f: Partial<Filters>): Filters {
   const base = { ...emptyFilters(), ...f };
   if (!Array.isArray(base.previousCompanies) || base.previousCompanies.length === 0) base.previousCompanies = [''];
+  if (!Array.isArray(base.optional)) base.optional = [];
   return base;
 }
 

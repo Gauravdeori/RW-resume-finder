@@ -1,5 +1,5 @@
 import type { SortKey } from './filter';
-import { AGE_MAX, AGE_MIN, emptyFilters, type Filters } from './types';
+import { AGE_MAX, AGE_MIN, ROW_KEYS, emptyFilters, type Filters, type RowKey } from './types';
 
 /**
  * Search state <-> URL query string, so a search can be shared or refreshed.
@@ -55,6 +55,7 @@ export function encodeFilters(f: Filters): string {
   if (f.ageMode === 'range') parts.push(`age.r${f.ageMin}-${f.ageMax}`);
   for (const [k, field] of LISTS) if (f[field].length) parts.push(`${k}.${(f[field] as string[]).map(enc).join(',')}`);
   for (const [k, field] of CHOICES) if (f[field] !== 'any') parts.push(`${k}.${enc(f[field])}`);
+  if (f.optional.length) parts.push(`opt.${f.optional.join(',')}`);
   return parts.join('~');
 }
 
@@ -74,6 +75,8 @@ export function decodeFilters(s: string): Filters {
     else if (k === 'pc') {
       const prev = v.split(',').map(dec).filter(Boolean);
       f.previousCompanies = prev.length ? prev : [''];
+    } else if (k === 'opt') {
+      f.optional = v.split(',').filter((r): r is RowKey => (ROW_KEYS as readonly string[]).includes(r));
     } else if (k === 'age') {
       if (v.startsWith('d')) {
         const decades = v.slice(1).split(',').map(Number).filter((d) => [20, 30, 40, 50, 60].includes(d));

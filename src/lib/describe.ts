@@ -1,5 +1,5 @@
 import type { Dict } from './i18n';
-import { GAISHI_SCORES, SENIORITIES, type AgeFields, type Filters } from './types';
+import { GAISHI_SCORES, SENIORITIES, type AgeFields, type Filters, type RowKey } from './types';
 import type { SavedSearch } from './savedSearches';
 
 /** Caption under the age slider: "Any age" | "30s, 40s" | "Ages 35 to 44". */
@@ -41,11 +41,35 @@ export interface ActiveChip {
   label: string;
   /** The filters with just this chip removed. */
   remove: (f: Filters) => Filters;
+  /** The filter row it belongs to (to show it as required or nice to have). */
+  row: RowKey;
 }
+
+const CHIP_ROW: [string, RowKey][] = [
+  ['last', 'name'],
+  ['first', 'name'],
+  ['current', 'company'],
+  ['prev-', 'company'],
+  ['age', 'age'],
+  ['gs-', 'gaishi'],
+  ['g-', 'gender'],
+  ['s-', 'seniority'],
+  ['i-', 'industry'],
+  ['p-', 'position'],
+  ['en', 'english'],
+  ['ja', 'japanese'],
+  ['foreign', 'foreign'],
+  ['overseas', 'overseas'],
+  ['d-', 'degree'],
+  ['c-', 'schoolClass'],
+  ['m-', 'major'],
+  ['school', 'school'],
+];
+const rowOfChip = (id: string): RowKey => CHIP_ROW.find(([prefix]) => id.startsWith(prefix))![1];
 
 /** One removable chip per ticked choice, in panel order (shown at the top of the filter panel). */
 export function activeChips(f: Filters, t: Dict): ActiveChip[] {
-  const out: ActiveChip[] = [];
+  const out: Omit<ActiveChip, 'row'>[] = [];
   const s = (v: string) => v.trim();
   const without = <T>(arr: T[], v: T) => arr.filter((x) => x !== v);
 
@@ -85,7 +109,7 @@ export function activeChips(f: Filters, t: Dict): ActiveChip[] {
     out.push({ id: `c-${c}`, label: t.chip.schoolClass(c), remove: (x) => ({ ...x, schoolClasses: without(x.schoolClasses, c) }) });
   for (const m of f.majors) out.push({ id: `m-${m}`, label: t.major[m], remove: (x) => ({ ...x, majors: without(x.majors, m) }) });
   if (s(f.schoolName)) out.push({ id: 'school', label: t.chip.school(s(f.schoolName)), remove: (x) => ({ ...x, schoolName: '' }) });
-  return out;
+  return out.map((c) => ({ ...c, row: rowOfChip(c.id) }));
 }
 
 /** One-line summary in the saved-searches menu. */

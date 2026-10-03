@@ -1,7 +1,7 @@
 import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CANDIDATES } from '../lib/data';
 import { activeChips, type ActiveChip } from '../lib/describe';
-import type { SortKey } from '../lib/filter';
+import type { Preferences, SortKey } from '../lib/filter';
 import { fmtNum, useI18n } from '../lib/i18n';
 import type { Candidate, Filters } from '../lib/types';
 import { useAnimatedNumber } from '../lib/useAnimatedNumber';
@@ -17,7 +17,7 @@ const GAP = 10;
 const MIN_TILE_W = 280;
 
 /** Live count: a big rolling number with tabular figures and a fixed width, so nothing shifts as it changes. */
-const CountCard = memo(function CountCard({ count, ofLine }: { count: number; ofLine: string }) {
+const CountCard = memo(function CountCard({ count, ofLine, note }: { count: number; ofLine: string; note?: string }) {
   const { t } = useI18n();
   const shown = useAnimatedNumber(count);
   return (
@@ -30,21 +30,38 @@ const CountCard = memo(function CountCard({ count, ofLine }: { count: number; of
         {t.countMatch}
       </p>
       <p className="truncate text-[11.5px] leading-tight text-on-accent">{ofLine}</p>
+      {note && <p className="mt-0.5 truncate text-[11px] leading-tight font-semibold text-white">★ {note}</p>}
     </div>
   );
 });
 
-const Chip = memo(function Chip({ id, label, hidden, onRemove }: { id: string; label: string; hidden?: boolean; onRemove: (id: string) => void }) {
+const Chip = memo(function Chip({
+  id,
+  label,
+  hidden,
+  nice,
+  onRemove,
+}: {
+  id: string;
+  label: string;
+  hidden?: boolean;
+  /** Nice to have: dashed outline. */
+  nice?: boolean;
+  onRemove: (id: string) => void;
+}) {
   const { t } = useI18n();
   return (
     <span
       data-chip
       className={cx(
-        'inline-flex h-7 flex-none items-center gap-1 rounded-full border border-accent/30 bg-[color-mix(in_srgb,var(--accent)_8%,var(--card))] pr-1 pl-2.5 text-[12px] font-medium whitespace-nowrap',
+        'inline-flex h-7 flex-none items-center gap-1 rounded-full border pr-1 pl-2.5 text-[12px] font-medium whitespace-nowrap',
+        nice ? 'border-dashed border-accent/60 bg-card text-muted' : 'border-accent/30 bg-[color-mix(in_srgb,var(--accent)_8%,var(--card))]',
         hidden && 'invisible',
       )}
+      title={nice ? t.niceTag : undefined}
     >
       {label}
+      {nice && <span className="sr-only"> ({t.niceTag})</span>}
       <button
         type="button"
         onClick={() => onRemove(id)}
@@ -104,7 +121,7 @@ const ActiveChips = memo(function ActiveChips({ filters, onRemove }: { filters: 
         {chips.length === 0 ? (
           <p className="truncate text-[12.5px] text-muted">{t.noActive}</p>
         ) : (
-          chips.map((c, i) => <Chip key={c.id} id={c.id} label={c.label} hidden={i >= fit.n} onRemove={onRemove} />)
+          chips.map((c, i) => <Chip key={c.id} id={c.id} label={c.label} nice={filters.optional.includes(c.row)} hidden={i >= fit.n} onRemove={onRemove} />)
         )}
       </div>
       {hidden.length > 0 && (
@@ -126,7 +143,7 @@ const ActiveChips = memo(function ActiveChips({ filters, onRemove }: { filters: 
           style={{ left: Math.max(0, fit.left - 200) }}
         >
           {hidden.map((c) => (
-            <Chip key={c.id} id={c.id} label={c.label} onRemove={onRemove} />
+            <Chip key={c.id} id={c.id} label={c.label} nice={filters.optional.includes(c.row)} onRemove={onRemove} />
           ))}
         </div>
       )}
@@ -151,6 +168,8 @@ interface Props {
   onSave: () => void;
   onClear: () => void;
   onOpenCv: (c: Candidate) => void;
+  /** Nice-to-have matches per candidate (null when every filter is required). */
+  prefs: Preferences | null;
   /** View menu: a 3-column grid of compact cards (default) or a 1-column list. */
   view: 'list' | 'grid';
   density: Density;
@@ -176,6 +195,7 @@ export const ResultsPane = memo(function ResultsPane({
   onOpenCv,
   view,
   density,
+  prefs,
 }: Props) {
   const { t } = useI18n();
   const listRef = useRef<HTMLDivElement>(null);
@@ -221,7 +241,7 @@ export const ResultsPane = memo(function ResultsPane({
   return (
     <div className="flex h-full min-h-0 flex-col gap-3" aria-label={t.resultsLabel} role="region">
       <div className="flex flex-none gap-4">
-        <CountCard count={results.length} ofLine={ofLine} />
+        <CountCard count={results.length} ofLine={ofLine} note={prefs ? t.niceRanked(prefs.total) : undefined} />
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <div className="min-w-0 flex-1 basis-[260px] overflow-hidden">{trail}</div>
@@ -270,7 +290,14 @@ export const ResultsPane = memo(function ResultsPane({
         ) : (
           Array.from(pageItems, (i) => (
             <div key={CANDIDATES[i].id} role="listitem">
-              <CandidateRow c={CANDIDATES[i]} variant={variant} density={density} onOpenCv={onOpenCv} />
+              <CandidateRow
+                c={CANDIDATES[i]}
+                variant={variant}
+                density={density}
+                prefN={prefs ? prefs.scores[i] : 0}
+                prefTotal={prefs ? prefs.total : 0}
+                onOpenCv={onOpenCv}
+              />
             </div>
           ))
         )}

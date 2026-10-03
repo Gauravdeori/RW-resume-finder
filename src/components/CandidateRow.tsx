@@ -64,6 +64,25 @@ export function GaishiBadge({ score, size }: { score: string; size: 'lg' | 'md' 
   );
 }
 
+/** "★ 2/3": how many of the nice-to-have filters this candidate matches. Red when all of them. */
+function PrefPill({ n, total }: { n: number; total: number }) {
+  const { t } = useI18n();
+  const all = n === total;
+  return (
+    <span
+      title={t.prefMatch(n, total)}
+      className={`inline-flex h-[17px] flex-none items-center rounded-full border px-1.5 text-[10.5px] leading-none font-semibold ${
+        all ? 'border-pick-line bg-pick text-pick-ink' : n ? 'border-accent/40 text-pick-ink' : 'border-line text-muted'
+      }`}
+    >
+      <span aria-hidden>
+        ★ {n}/{total}
+      </span>
+      <span className="sr-only">{t.prefMatch(n, total)}</span>
+    </span>
+  );
+}
+
 /**
  * One result as a card of fixed height.
  * - "row" (1-column view): name with the details line beside it, role, five key facts in one line, CV thumbnail,
@@ -76,11 +95,16 @@ export const CandidateRow = memo(function CandidateRow({
   c,
   variant,
   density,
+  prefN,
+  prefTotal,
   onOpenCv,
 }: {
   c: Candidate;
   variant: CardVariant;
   density: Density;
+  /** Nice-to-have filters matched, out of prefTotal (0 total = none in use). */
+  prefN: number;
+  prefTotal: number;
   onOpenCv: (c: Candidate) => void;
 }) {
   const { t } = useI18n();
@@ -120,7 +144,10 @@ export const CandidateRow = memo(function CandidateRow({
           </div>
           <GaishiBadge score={c.gaishiScore} size="md" />
         </div>
-        <p className="truncate text-[11.5px] leading-[15px] text-muted">{t.cardMeta(c)}</p>
+        <p className="flex items-center gap-1.5 text-[11.5px] leading-[15px] text-muted">
+          {prefTotal > 0 && <PrefPill n={prefN} total={prefTotal} />}
+          <span className="min-w-0 truncate">{t.cardMeta(c)}</span>
+        </p>
         <dl className={`text-[12px] leading-[15px] ${roomy ? 'mt-2' : 'mt-1'}`}>
           <div className="truncate" title={factLine}>
             <dt className="sr-only">{`${t.factAge}, ${t.factSeniority}, ${t.factEnglish}, ${t.factJapanese}`}</dt>
@@ -146,6 +173,11 @@ export const CandidateRow = memo(function CandidateRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-4">
           <h2 className="max-w-[55%] flex-none truncate text-[16px] leading-[20px] font-bold tracking-[-0.01em]">{name}</h2>
+          {prefTotal > 0 && (
+            <span className="-ml-2 self-center">
+              <PrefPill n={prefN} total={prefTotal} />
+            </span>
+          )}
           <p className="ml-auto min-w-0 truncate text-right text-[12px] leading-[16px] text-muted">{t.cardMeta(c)}</p>
         </div>
         <p className="mt-0.5 truncate text-[13px] leading-[18px] font-medium">{t.titleAt(c)}</p>

@@ -15,7 +15,7 @@ import { DEFAULT_SETTINGS, loadSettings, storeSettings, type AppSettings } from 
 import { KEEP_LAST, clearStoredConversions, loadConversions, newConversion, storeConversions, type Conversion } from './lib/conversions';
 import { CANDIDATES } from './lib/data';
 import { activeChips, countActiveFilters, suggestName } from './lib/describe';
-import { chainSteps, runFilter, sortResults, type SortKey } from './lib/filter';
+import { chainSteps, preferenceScores, runFilter, sortResults, type SortKey } from './lib/filter';
 import { fmtNum, useI18n } from './lib/i18n';
 import { addRecent, loadRecent, storeRecent, type RecentSearch } from './lib/recentSearches';
 import { useHashRoute } from './lib/route';
@@ -139,7 +139,9 @@ export default function App() {
   const base = stepResults[stepResults.length - 1];
   const liveDraft = useLiveFilters(draft, draftVersion);
   const results = useMemo(() => runFilter(base, applySettings(liveDraft)), [base, liveDraft, applySettings]);
-  const sorted = useMemo(() => sortResults(results, sort), [results, sort]);
+  // Nice-to-have filters (Required box unticked) leave everyone in and rank matches first under Best CVs.
+  const prefs = useMemo(() => preferenceScores(results, [...steps, liveDraft].map(applySettings)), [results, steps, liveDraft, applySettings]);
+  const sorted = useMemo(() => sortResults(results, sort, prefs), [results, sort, prefs]);
   const onResults = screen === 'results' || steps.length > 0;
 
   // Keep the URL in step (replaceState: no reloads, no history entries), so a search can be shared or refreshed.
@@ -457,6 +459,7 @@ export default function App() {
               <SearchSide
                 count={results.length}
                 ofLine={ofLine}
+                note={prefs ? t.niceRanked(prefs.total) : undefined}
                 saved={saved}
                 recent={recent}
                 showJdFill={settings.showJdFill}
@@ -521,6 +524,7 @@ export default function App() {
                 onOpenCv={setCv}
                 view={desktop ? view.results : 'list'}
                 density={view.density}
+                prefs={prefs}
               />
             </div>
           </main>

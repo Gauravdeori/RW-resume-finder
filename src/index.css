@@ -143,10 +143,10 @@
 :root {
   --ctl-h: 36px;
   --row-py: 4px;
-  --label-w: 80px;
+  --label-w: 92px;
 }
 :root:lang(ja) {
-  --label-w: 96px;
+  --label-w: 112px;
 }
 [data-density='comfortable'] {
   --ctl-h: 40px;

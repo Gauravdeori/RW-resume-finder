@@ -1,4 +1,4 @@
-import { memo, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { memo, useCallback, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useI18n } from '../lib/i18n';
 import {
   DEGREES,
@@ -11,9 +11,10 @@ import {
   type AgeFields,
   type FilterGender,
   type Filters,
+  type RowKey,
 } from '../lib/types';
 import { AgeFilter } from './AgeFilter';
-import { CheckTile, FilterRow, TextField, Toggle, cx, toggleIn } from './controls';
+import { CheckTile, FilterRow, RequiredBox, TextField, Toggle, cx, toggleIn } from './controls';
 import { FitToScreen } from './FitToScreen';
 import { JdButton } from './JdButton';
 
@@ -31,6 +32,23 @@ const TABS: SectionKey[] = ['basics', 'role', 'gaishi', 'education'];
 type Patch = (p: Partial<Filters>) => void;
 type ListField = 'genders' | 'seniority' | 'industries' | 'positions' | 'gaishiScores' | 'degrees' | 'schoolClasses' | 'majors';
 type ChoiceField = 'foreign' | 'englishMin' | 'japaneseMin' | 'overseas';
+/** Rows get the list of nice-to-have rows (stable unless it changes) and one callback for their Required box. */
+type Req = { optional: RowKey[]; onRequired: (row: RowKey, on: boolean) => void };
+const ROW_OF: Record<ListField | ChoiceField, RowKey> = {
+  genders: 'gender',
+  seniority: 'seniority',
+  industries: 'industry',
+  positions: 'position',
+  gaishiScores: 'gaishi',
+  degrees: 'degree',
+  schoolClasses: 'schoolClass',
+  majors: 'major',
+  foreign: 'foreign',
+  englishMin: 'english',
+  japaneseMin: 'japanese',
+  overseas: 'overseas',
+};
+const reqFor = ({ optional, onRequired }: Req, row: RowKey) => ({ on: !optional.includes(row), onChange: (on: boolean) => onRequired(row, on) });
 
 /** How many filters are active in each group (shown as a badge on its tab or zone heading). */
 function activeIn(key: SectionKey, f: Filters, showGender: boolean): number {
@@ -87,7 +105,9 @@ const MultiRow = memo(function MultiRow({
   withCode,
   titles,
   help,
-}: {
+  optional,
+  onRequired,
+}: Req & {
   label: string;
   field: ListField;
   value: readonly string[];
@@ -105,7 +125,7 @@ const MultiRow = memo(function MultiRow({
 }) {
   const toggle = (o: string) => onChange({ [field]: toggleIn(value as string[], o) } as Partial<Filters>);
   return (
-    <FilterRow label={label}>
+    <FilterRow label={label} required={reqFor({ optional, onRequired }, ROW_OF[field])}>
       <div className={cx(help && 'flex items-center gap-3')}>
         <div className={cx(WRAP, help && 'flex-none')}>
           {options.map((o) =>
@@ -145,7 +165,9 @@ const ChoiceRow = memo(function ChoiceRow({
   options,
   labels,
   onChange,
-}: {
+  optional,
+  onRequired,
+}: Req & {
   label: string;
   field: ChoiceField;
   value: string;
@@ -154,7 +176,7 @@ const ChoiceRow = memo(function ChoiceRow({
   onChange: Patch;
 }) {
   return (
-    <FilterRow label={label}>
+    <FilterRow label={label} required={reqFor({ optional, onRequired }, ROW_OF[field])}>
       <div className={WRAP}>
         {options.map((o) => (
           <Toggle key={o} on={value === o} onClick={() => onChange({ [field]: value === o ? 'any' : o } as Partial<Filters>)}>
@@ -189,7 +211,9 @@ const NameRow = memo(function NameRow({
   genders,
   showGender,
   onChange,
-}: {
+  optional,
+  onRequired,
+}: Req & {
   last: string;
   first: string;
   genders: FilterGender[];
@@ -200,13 +224,14 @@ const NameRow = memo(function NameRow({
   const genderId = useId();
   if (lang === 'ja')
     return (
-      <FilterRow label={t.rowName}>
+      <FilterRow label={t.rowName} required={reqFor({ optional, onRequired }, 'name')}>
         <div className="flex flex-wrap items-end gap-x-2 gap-y-1.5">
           <TextField label={t.lastName} value={last} onChange={(v) => onChange({ lastName: v })} className="w-[84px]" />
           <TextField label={t.firstName} value={first} onChange={(v) => onChange({ firstName: v })} className="w-[84px]" />
           {showGender && (
             <div role="group" aria-labelledby={genderId} className="ml-auto flex items-center gap-2">
-              <span id={genderId} className="text-[12.5px] font-semibold">
+              <RequiredBox on={!optional.includes('gender')} name={t.rowGender} onChange={(on) => onRequired('gender', on)} />
+              <span id={genderId} className={cx('text-[12.5px] font-semibold', optional.includes('gender') && 'text-muted')}>
                 {t.rowGender}
               </span>
               <GenderButtons value={genders} onChange={onChange} />
@@ -216,7 +241,7 @@ const NameRow = memo(function NameRow({
       </FilterRow>
     );
   return (
-    <FilterRow label={t.rowName}>
+    <FilterRow label={t.rowName} required={reqFor({ optional, onRequired }, 'name')}>
       <div className="grid grid-cols-2 gap-2">
         <TextField label={t.lastName} value={last} onChange={(v) => onChange({ lastName: v })} />
         <TextField label={t.firstName} value={first} onChange={(v) => onChange({ firstName: v })} />
@@ -225,11 +250,11 @@ const NameRow = memo(function NameRow({
   );
 });
 
-const GenderRow = memo(function GenderRow({ value, onChange }: { value: FilterGender[]; onChange: Patch }) {
+const GenderRow = memo(function GenderRow({ value, onChange, optional, onRequired }: Req & { value: FilterGender[]; onChange: Patch }) {
   const { t, lang } = useI18n();
   if (lang === 'ja') return null; // shares the name row in Japanese
   return (
-    <FilterRow label={t.rowGender}>
+    <FilterRow label={t.rowGender} required={reqFor({ optional, onRequired }, 'gender')}>
       <div className={WRAP}>
         <GenderButtons value={value} onChange={onChange} />
       </div>
@@ -240,12 +265,18 @@ const GenderRow = memo(function GenderRow({ value, onChange }: { value: FilterGe
 /** Current company and up to three previous companies (more would not fit the screen). */
 const MAX_PREVIOUS = 3;
 
-const CompanyRow = memo(function CompanyRow({ current, previous, onChange }: { current: string; previous: string[]; onChange: Patch }) {
+const CompanyRow = memo(function CompanyRow({
+  current,
+  previous,
+  onChange,
+  optional,
+  onRequired,
+}: Req & { current: string; previous: string[]; onChange: Patch }) {
   const { t } = useI18n();
   const setPrevious = (i: number, v: string) => onChange({ previousCompanies: previous.map((p, j) => (j === i ? v : p)) });
   const removePrevious = (i: number) => onChange({ previousCompanies: previous.filter((_, j) => j !== i) });
   return (
-    <FilterRow label={t.rowCompany}>
+    <FilterRow label={t.rowCompany} required={reqFor({ optional, onRequired }, 'company')}>
       <div className="flex flex-col gap-1.5">
         <div className="grid grid-cols-2 gap-2">
           <TextField label={t.currentCompany} value={current} onChange={(v) => onChange({ currentCompany: v })} />
@@ -287,44 +318,45 @@ const CompanyRow = memo(function CompanyRow({ current, previous, onChange }: { c
   );
 });
 
-const AgeRow = memo(function AgeRow({ ageMode, decades, ageMin, ageMax, onChange }: AgeFields & { onChange: Patch }) {
+const AgeRow = memo(function AgeRow({ ageMode, decades, ageMin, ageMax, onChange, optional, onRequired }: AgeFields & Req & { onChange: Patch }) {
   const { t } = useI18n();
   const age = useMemo(() => ({ ageMode, decades, ageMin, ageMax }), [ageMode, decades, ageMin, ageMax]);
   return (
-    <FilterRow label={t.rowAge}>
+    <FilterRow label={t.rowAge} required={reqFor({ optional, onRequired }, 'age')}>
       <AgeFilter filters={age} onChange={onChange} />
     </FilterRow>
   );
 });
 
-const SchoolRow = memo(function SchoolRow({ value, onChange }: { value: string; onChange: Patch }) {
+const SchoolRow = memo(function SchoolRow({ value, onChange, optional, onRequired }: Req & { value: string; onChange: Patch }) {
   const { t } = useI18n();
   return (
-    <FilterRow label={t.schoolName}>
+    <FilterRow label={t.schoolName} required={reqFor({ optional, onRequired }, 'school')}>
       <TextField label={t.schoolName} value={value} onChange={(v) => onChange({ schoolName: v })} hideLabel />
     </FilterRow>
   );
 });
 
 /** The rows of one group, shared by both layouts. */
-function GroupRows({ group, f, onChange, showGender }: { group: SectionKey; f: Filters; onChange: Patch; showGender: boolean }) {
+function GroupRows({ group, f, onChange, showGender, onRequired }: { group: SectionKey; f: Filters; onChange: Patch; showGender: boolean; onRequired: Req['onRequired'] }) {
   const { t } = useI18n();
+  const req: Req = { optional: f.optional, onRequired };
   // Option labels per language; stable objects so the rows' memo holds.
   const labels = useMemo(() => ({ foreign: t.foreign, level: { any: t.any, ...t.level }, overseas: t.overseas }), [t]);
   switch (group) {
     case 'basics':
       return (
         <>
-          <NameRow last={f.lastName} first={f.firstName} genders={f.genders} showGender={showGender} onChange={onChange} />
-          <CompanyRow current={f.currentCompany} previous={f.previousCompanies} onChange={onChange} />
-          <AgeRow ageMode={f.ageMode} decades={f.decades} ageMin={f.ageMin} ageMax={f.ageMax} onChange={onChange} />
-          {showGender && <GenderRow value={f.genders} onChange={onChange} />}
+          <NameRow {...req} last={f.lastName} first={f.firstName} genders={f.genders} showGender={showGender} onChange={onChange} />
+          <CompanyRow {...req} current={f.currentCompany} previous={f.previousCompanies} onChange={onChange} />
+          <AgeRow {...req} ageMode={f.ageMode} decades={f.decades} ageMin={f.ageMin} ageMax={f.ageMax} onChange={onChange} />
+          {showGender && <GenderRow {...req} value={f.genders} onChange={onChange} />}
         </>
       );
     case 'role':
       return (
         <>
-          <MultiRow
+          <MultiRow {...req}
             label={t.rowSeniority}
             field="seniority"
             value={f.seniority}
@@ -334,14 +366,14 @@ function GroupRows({ group, f, onChange, showGender }: { group: SectionKey; f: F
             onChange={onChange}
             withCode
           />
-          <MultiRow label={t.rowIndustry} field="industries" value={f.industries} options={INDUSTRIES} labels={t.industry} onChange={onChange} tiles />
-          <MultiRow label={t.rowPosition} field="positions" value={f.positions} options={POSITIONS} labels={t.position} onChange={onChange} tiles />
+          <MultiRow {...req} label={t.rowIndustry} field="industries" value={f.industries} options={INDUSTRIES} labels={t.industry} onChange={onChange} tiles />
+          <MultiRow {...req} label={t.rowPosition} field="positions" value={f.positions} options={POSITIONS} labels={t.position} onChange={onChange} tiles />
         </>
       );
     case 'gaishi':
       return (
         <>
-          <MultiRow
+          <MultiRow {...req}
             label={t.gaishiScore}
             field="gaishiScores"
             value={f.gaishiScores}
@@ -350,19 +382,19 @@ function GroupRows({ group, f, onChange, showGender }: { group: SectionKey; f: F
             onChange={onChange}
             help={t.gaishiHelp}
           />
-          <ChoiceRow label={t.foreignLabel} field="foreign" value={f.foreign} options={FOREIGN} labels={labels.foreign} onChange={onChange} />
-          <ChoiceRow label={t.englishAtLeast} field="englishMin" value={f.englishMin} options={AT_LEAST} labels={labels.level} onChange={onChange} />
-          <ChoiceRow label={t.japaneseAtLeast} field="japaneseMin" value={f.japaneseMin} options={AT_LEAST} labels={labels.level} onChange={onChange} />
-          <ChoiceRow label={t.overseasLabel} field="overseas" value={f.overseas} options={OVERSEAS} labels={labels.overseas} onChange={onChange} />
+          <ChoiceRow {...req} label={t.foreignLabel} field="foreign" value={f.foreign} options={FOREIGN} labels={labels.foreign} onChange={onChange} />
+          <ChoiceRow {...req} label={t.englishAtLeast} field="englishMin" value={f.englishMin} options={AT_LEAST} labels={labels.level} onChange={onChange} />
+          <ChoiceRow {...req} label={t.japaneseAtLeast} field="japaneseMin" value={f.japaneseMin} options={AT_LEAST} labels={labels.level} onChange={onChange} />
+          <ChoiceRow {...req} label={t.overseasLabel} field="overseas" value={f.overseas} options={OVERSEAS} labels={labels.overseas} onChange={onChange} />
         </>
       );
     case 'education':
       return (
         <>
-          <MultiRow label={t.degreeLabel} field="degrees" value={f.degrees} options={DEGREES} labels={t.degree} onChange={onChange} />
-          <MultiRow label={t.schoolClassLabel} field="schoolClasses" value={f.schoolClasses} options={SCHOOL_CLASSES} labels={t.schoolClass} onChange={onChange} />
-          <MultiRow label={t.majorLabel} field="majors" value={f.majors} options={MAJORS} labels={t.major} onChange={onChange} />
-          <SchoolRow value={f.schoolName} onChange={onChange} />
+          <MultiRow {...req} label={t.degreeLabel} field="degrees" value={f.degrees} options={DEGREES} labels={t.degree} onChange={onChange} />
+          <MultiRow {...req} label={t.schoolClassLabel} field="schoolClasses" value={f.schoolClasses} options={SCHOOL_CLASSES} labels={t.schoolClass} onChange={onChange} />
+          <MultiRow {...req} label={t.majorLabel} field="majors" value={f.majors} options={MAJORS} labels={t.major} onChange={onChange} />
+          <SchoolRow {...req} value={f.schoolName} onChange={onChange} />
         </>
       );
   }
@@ -482,9 +514,14 @@ export const FilterPanel = memo(function FilterPanel({
     gaishi: activeIn('gaishi', f, showGender),
     education: activeIn('education', f, showGender),
   };
+  // Untick = nice to have (added to f.optional); tick = required again.
+  const onRequired = useCallback(
+    (row: RowKey, on: boolean) => onChange({ optional: on ? f.optional.filter((r) => r !== row) : [...f.optional, row] }),
+    [f.optional, onChange],
+  );
   const zone = (k: SectionKey) => (
     <Zone title={t.sections[k]} count={counts[k]}>
-      <GroupRows group={k} f={f} onChange={onChange} showGender={showGender} />
+      <GroupRows group={k} f={f} onChange={onChange} showGender={showGender} onRequired={onRequired} />
     </Zone>
   );
 
@@ -532,7 +569,7 @@ export const FilterPanel = memo(function FilterPanel({
       <div role="tabpanel" id={idFor(tab, 'panel')} aria-labelledby={idFor(tab, 'tab')} className="flex min-h-0 flex-1 flex-col">
         <FitToScreen className="flex-1 px-4" min={fitMin}>
           <div className="divide-y divide-line">
-            <GroupRows group={tab} f={f} onChange={onChange} showGender={showGender} />
+            <GroupRows group={tab} f={f} onChange={onChange} showGender={showGender} onRequired={onRequired} />
           </div>
         </FitToScreen>
       </div>

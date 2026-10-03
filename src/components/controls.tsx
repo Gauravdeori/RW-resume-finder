@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from 'react';
+import { useI18n } from '../lib/i18n';
 
 export const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(' ');
 
@@ -124,19 +125,74 @@ export function TextField({
 }
 
 /**
- * A filter row (Ted's grid): a fixed label column (--label-w: 80px, 96px in Japanese), a 12px gap,
+ * The small "Required" box beside a filter name. Ticked (default): candidates must match the filter.
+ * Unticked: nice to have. Ticked uses the red picked look; a larger invisible hit area makes it easy to tap.
+ */
+export function RequiredBox({ on, name, onChange }: { on: boolean; name: string; onChange: (on: boolean) => void }) {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={on}
+      aria-label={t.requiredFor(name)}
+      title={t.requiredHint}
+      onClick={() => onChange(!on)}
+      data-required
+      className={cx(
+        'relative flex h-[14px] w-[14px] flex-none items-center justify-center rounded-[3px] border after:absolute after:-inset-[7px] after:content-[""]',
+        PRESS,
+        on ? 'border-pick-line bg-pick text-pick-ink' : 'border-muted/70 bg-field hover:border-accent',
+      )}
+    >
+      {on && (
+        <svg viewBox="0 0 12 12" aria-hidden className="h-[10px] w-[10px]">
+          <path d="M2 6.5 4.8 9 10 3" fill="none" stroke="currentColor" strokeWidth="2" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+/**
+ * A filter row (Ted's grid): a fixed label column (--label-w: 92px, 112px in Japanese), a 12px gap,
  * then the controls, so all row labels share one left edge and all controls start on one vertical line.
+ * With `required`, the label starts with the small Required box; unticked rows say "nice to have".
  * On phones (under 640px) the label sits above its controls, so the controls get the full width.
  */
-export function FilterRow({ label, sub, children }: { label: string; sub?: string; children: ReactNode }) {
+export function FilterRow({
+  label,
+  sub,
+  required,
+  children,
+}: {
+  label: string;
+  sub?: string;
+  required?: { on: boolean; onChange: (on: boolean) => void };
+  children: ReactNode;
+}) {
+  const { t } = useI18n();
   const id = useId();
   return (
-    <div role="group" aria-labelledby={id} className="grid grid-cols-1 gap-x-3 gap-y-1.5 py-[var(--row-py)] sm:grid-cols-[var(--label-w)_minmax(0,1fr)]">
-      <div className="sm:pt-[calc((var(--ctl-h)-15px)/2)]">
-        <h3 id={id} className="text-[12.5px] leading-[15px] font-semibold">
-          {label}
-        </h3>
-        {sub && <p className="mt-1 text-[11.5px] leading-snug text-muted">{sub}</p>}
+    <div
+      role="group"
+      aria-labelledby={id}
+      data-optional={required && !required.on ? '' : undefined}
+      className="grid grid-cols-1 gap-x-3 gap-y-1.5 py-[var(--row-py)] sm:grid-cols-[var(--label-w)_minmax(0,1fr)]"
+    >
+      <div className="flex items-start gap-1.5 sm:pt-[calc((var(--ctl-h)-15px)/2)]">
+        {required && (
+          <span className="pt-px">
+            <RequiredBox on={required.on} name={label} onChange={required.onChange} />
+          </span>
+        )}
+        <div className="min-w-0">
+          <h3 id={id} className={cx('text-[12.5px] leading-[15px] font-semibold', required && !required.on && 'text-muted')}>
+            {label}
+          </h3>
+          {required && !required.on && <p className="text-[10.5px] leading-[13px] font-medium text-accent">{t.niceTag}</p>}
+          {sub && <p className="mt-1 text-[11.5px] leading-snug text-muted">{sub}</p>}
+        </div>
       </div>
       <div className="min-w-0">{children}</div>
     </div>
