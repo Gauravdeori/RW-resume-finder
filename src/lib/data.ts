@@ -163,8 +163,15 @@ const OVERSEAS_PROPENSITY: Record<Level, number> = {
   Native: 0.9,
 };
 
+/** Companies grouped by industry and foreign/Japanese once, so picking one scans a short list, not all of them. */
+const POOLS = new Map<string, Company[]>();
+for (const co of COMPANIES) {
+  const key = `${co.industry}|${co.foreign}`;
+  POOLS.set(key, [...(POOLS.get(key) ?? []), co]);
+}
+
 function pickCompany(industry: Industry, foreign: boolean, exclude: Set<string>): Company {
-  let pool = COMPANIES.filter((co) => co.industry === industry && co.foreign === foreign && !exclude.has(co.name));
+  let pool = (POOLS.get(`${industry}|${foreign}`) ?? []).filter((co) => !exclude.has(co.name));
   if (pool.length === 0) pool = COMPANIES.filter((co) => co.foreign === foreign && !exclude.has(co.name));
   if (pool.length === 0) pool = COMPANIES.filter((co) => !exclude.has(co.name));
   return pick(pool);
@@ -309,10 +316,27 @@ function makeCandidate(i: number): Candidate {
   };
 }
 
-function generate(): Candidate[] {
-  const out: Candidate[] = [];
-  for (let i = 0; i < TOTAL_CANDIDATES; i++) out.push(makeCandidate(i));
-  return out;
-}
+const list: Candidate[] = [];
+/** Every sample candidate, in data order. Filled once by generateCandidates() before the app first renders. */
+export const CANDIDATES: readonly Candidate[] = list;
 
-export const CANDIDATES: readonly Candidate[] = generate();
+/** Hand the main thread back to the browser (paint, input) before carrying on. */
+const yieldToMain = () =>
+  new Promise<void>((resolve) => {
+    const ch = new MessageChannel();
+    ch.port1.onmessage = () => resolve();
+    ch.port2.postMessage(null);
+  });
+
+const SLICE = 500;
+
+/**
+ * Generates the candidates once, outside React, in slices of 500 with a yield between them, so loading never
+ * blocks the page in one long task. Same seed and order, so the data is identical on every load.
+ */
+export async function generateCandidates(): Promise<void> {
+  for (let i = list.length; i < TOTAL_CANDIDATES; i++) {
+    list.push(makeCandidate(i));
+    if (i % SLICE === SLICE - 1) await yieldToMain();
+  }
+}

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useI18n, type Lang } from '../lib/i18n';
 import { hrefFor, type Route } from '../lib/route';
 import type { SavedSearch } from '../lib/savedSearches';
@@ -10,7 +11,8 @@ const LANGS: { id: Lang; label: string }[] = [
   { id: 'ja', label: '日本語' },
 ];
 
-export function TopBar({
+/** Sticky top bar. Memoised: results changing does not re-render it. */
+export const TopBar = memo(function TopBar({
   route,
   saved,
   onRunSaved,
@@ -39,7 +41,7 @@ export function TopBar({
   };
 
   return (
-    <header className="border-b border-topbar-border bg-topbar text-white">
+    <header className="sticky top-0 z-30 flex-none border-b border-topbar-border bg-topbar text-white">
       <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-4 px-4 md:px-8 lg:gap-7 lg:px-10">
         <a
           href={hrefFor('search')}
@@ -107,4 +109,4 @@ export function TopBar({
       </nav>
     </header>
   );
-}
+});

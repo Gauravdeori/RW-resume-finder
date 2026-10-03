@@ -12,8 +12,11 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/** CV preview over the dimmed results. The full CV is only built when opened. */
-export function CvModal({ c, onClose }: { c: Candidate; onClose: () => void }) {
+/**
+ * CV preview as a right-side drawer over the results. Esc or × closes it; the results keep their scroll position.
+ * Loaded on demand (React.lazy) the first time a CV is opened.
+ */
+export default function CvDrawer({ c, onClose }: { c: Candidate; onClose: () => void }) {
   const { t } = useI18n();
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -24,16 +27,23 @@ export function CvModal({ c, onClose }: { c: Candidate; onClose: () => void }) {
   ];
 
   return (
-    <Modal labelledBy={titleId} onClose={onClose} initialFocus={closeRef} className="max-w-[560px] rounded-xl px-5 py-6 sm:px-8 sm:py-7">
+    <Modal
+      labelledBy={titleId}
+      onClose={onClose}
+      initialFocus={closeRef}
+      placement="right"
+      className="max-w-[560px] rounded-l-xl border-y-0 border-r-0 px-5 py-6 sm:px-8 sm:py-7"
+    >
       <button
         ref={closeRef}
         type="button"
         onClick={onClose}
-        className="absolute top-4 right-4 h-8 rounded-lg border border-line px-3 text-[13px] font-medium transition-[border-color,box-shadow] duration-150 hover:border-ink/45 hover:shadow-control"
+        aria-label={t.closeCv}
+        className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-lg border border-line text-[20px] leading-none hover:border-ink/45"
       >
-        {t.close}
+        ×
       </button>
-      <h2 id={titleId} className="pr-20 text-[24px] leading-tight font-extrabold">
+      <h2 id={titleId} className="pr-14 text-[24px] leading-tight font-bold tracking-[-0.01em]">
         <span className="sr-only">{t.cvDialog(t.displayName(c))}: </span>
         <span aria-hidden>{t.displayName(c)}</span>
       </h2>

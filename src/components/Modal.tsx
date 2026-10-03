@@ -4,8 +4,18 @@ import { cx } from './controls';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+const PLACEMENT = {
+  /** Dialog near the top of the screen. */
+  center: { wrap: 'items-start justify-center overflow-y-auto px-3 py-3 sm:px-4 sm:py-[8vh]', panel: 'anim-slide-up' },
+  /** Drawer from the right edge (CV preview). */
+  right: { wrap: 'items-stretch justify-end', panel: 'anim-slide-left h-full overflow-y-auto' },
+  /** Sheet from the bottom edge (filters on phones). */
+  bottom: { wrap: 'items-end justify-center', panel: 'anim-sheet-up flex max-h-[92dvh] flex-col' },
+} as const;
+
 /**
- * Modal over a dimmed page. Esc closes, focus stays inside, focus returns to the opener.
+ * Modal over a dimmed, blurred page: a centred dialog, a right-side drawer or a bottom sheet.
+ * Esc closes, focus stays inside, focus returns to the opener.
  * The page behind is not re-rendered or scrolled, so the results keep their scroll position.
  */
 export function Modal({
@@ -14,13 +24,16 @@ export function Modal({
   children,
   className,
   initialFocus,
+  placement = 'center',
 }: {
   labelledBy: string;
   onClose: () => void;
   children: ReactNode;
   className?: string;
   initialFocus?: RefObject<HTMLElement | null>;
+  placement?: keyof typeof PLACEMENT;
 }) {
+  const place = PLACEMENT[placement];
   const panel = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -61,7 +74,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="anim-fade-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[color-mix(in_srgb,var(--overlay)_70%,transparent)] px-3 py-3 backdrop-blur-[6px] sm:px-4 sm:py-[8vh]"
+      className={cx('anim-fade-in fixed inset-0 z-50 flex bg-[color-mix(in_srgb,var(--overlay)_70%,transparent)] backdrop-blur-[6px]', place.wrap)}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -72,7 +85,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={labelledBy}
         tabIndex={-1}
-        className={cx('anim-slide-up relative w-full border border-line bg-card text-ink shadow-[0_24px_64px_rgba(0,0,0,0.22)] outline-none', className)}
+        className={cx('relative w-full border border-line bg-card text-ink shadow-[0_24px_64px_rgba(0,0,0,0.22)] outline-none', place.panel, className)}
       >
         {children}
       </div>
