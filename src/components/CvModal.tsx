@@ -24,12 +24,12 @@ export function CvModal({ c, onClose }: { c: Candidate; onClose: () => void }) {
   ];
 
   return (
-    <Modal labelledBy={titleId} onClose={onClose} initialFocus={closeRef} className="max-w-[540px] px-5 py-6 sm:px-8 sm:py-7">
+    <Modal labelledBy={titleId} onClose={onClose} initialFocus={closeRef} className="max-w-[560px] rounded-xl px-5 py-6 sm:px-8 sm:py-7">
       <button
         ref={closeRef}
         type="button"
         onClick={onClose}
-        className="absolute top-4 right-4 h-8 border border-ink px-3 text-[13px] hover:bg-sel hover:text-on-sel"
+        className="absolute top-4 right-4 h-8 rounded-lg border border-line px-3 text-[13px] font-medium transition-[border-color,box-shadow] duration-150 hover:border-ink/45 hover:shadow-control"
       >
         {t.close}
       </button>
@@ -38,7 +38,7 @@ export function CvModal({ c, onClose }: { c: Candidate; onClose: () => void }) {
         <span aria-hidden>{t.displayName(c)}</span>
       </h2>
       <p className="mt-1 text-[13px]">{t.titleAt(c)}</p>
-      <div aria-hidden className="mt-5 h-[3px] w-10 bg-accent" />
+      <div aria-hidden className="mt-5 h-[3px] w-10 rounded-full bg-accent" />
 
       <Section title={t.cvProfile}>
         <p>{t.profileText(c)}</p>

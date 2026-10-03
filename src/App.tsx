@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CountRail } from './components/CountRail';
 import { AdminPage } from './components/AdminPage';
 import { CvModal } from './components/CvModal';
 import { DashboardPage } from './components/DashboardPage';
 import { FilterPanel } from './components/FilterPanel';
-import { JdToggle } from './components/JdPanel';
 import { ResultsList } from './components/ResultsList';
 import { SaveSearchModal } from './components/SaveSearchModal';
 import { TopBar } from './components/TopBar';
@@ -21,6 +20,8 @@ import { clearStoredSaved, loadSaved, newSavedId, storeSaved, type SavedSearch }
 import { cloneFilters, emptyFilters, type Candidate, type Filters } from './lib/types';
 
 const PAGE = 10;
+/** How long skeleton rows show when switching search steps. */
+const SKELETON_MS = 320;
 const TEXT_DEBOUNCE_MS = 300;
 
 type TextPart = Pick<Filters, 'lastName' | 'firstName' | 'currentCompany' | 'previousCompanies' | 'schoolName'>;
@@ -60,73 +61,8 @@ function useLiveFilters(f: Filters, version: number): Filters {
 
 type View = 'panel' | 'results';
 
-/** Base size of the laptop filter panel; every laptop size in the panel is a multiple of it (em). */
-const FIT_MIN_PX = 12;
-const FIT_MAX_PX = 28;
-const FIT_BOTTOM_GAP = 12;
-
-/**
- * Laptops and desktops: scale the filter panel so it fills the screen exactly, with no blank space
- * below and no scrolling. Finds the largest base size at which the panel still fits (binary search),
- * then stretches the card to the bottom edge. Phones and tablets are left alone.
- */
-function useFitToScreen(active: boolean, deps: unknown[]) {
-  const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const box = ref.current;
-    if (!box) return;
-    const card = box.querySelector<HTMLElement>('[role=region]');
-    if (!card) return;
-
-    const reset = () => {
-      box.style.fontSize = '';
-      card.style.minHeight = '';
-    };
-    const fit = () => {
-      reset();
-      if (!active || !window.matchMedia('(min-width: 1024px)').matches) return;
-      const limit = window.innerHeight - FIT_BOTTOM_GAP;
-      const bottom = () => Math.max(...[...box.children].map((c) => c.getBoundingClientRect().bottom)) + window.scrollY;
-      const fits = (px: number) => {
-        box.style.fontSize = `${px}px`;
-        return bottom() <= limit;
-      };
-      let lo = FIT_MIN_PX;
-      let hi = FIT_MAX_PX;
-      if (fits(hi)) lo = hi;
-      else if (fits(lo)) {
-        for (let i = 0; i < 9; i++) {
-          const mid = (lo + hi) / 2;
-          if (fits(mid)) lo = mid;
-          else hi = mid;
-        }
-      }
-      box.style.fontSize = `${lo}px`;
-      // Fill any remainder (wrapping moves in steps) so the card reaches the bottom edge.
-      const top = card.getBoundingClientRect().top + window.scrollY;
-      if (limit - top > card.offsetHeight) card.style.minHeight = `${limit - top}px`;
-    };
-
-    fit();
-    let frame = 0;
-    const onResize = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(fit);
-    };
-    window.addEventListener('resize', onResize);
-    // The web font changes text widths once it loads; fit again then.
-    document.fonts?.ready.then(onResize);
-    return () => {
-      window.removeEventListener('resize', onResize);
-      cancelAnimationFrame(frame);
-      reset();
-    };
-  }, [active, ...deps]);
-  return ref;
-}
-
 export default function App() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   // Upload Resume, Dashboard and Search are separate pages; search state is kept while you move between them.
   const [route, go] = useHashRoute();
 
@@ -153,6 +89,16 @@ export default function App() {
   const [visible, setVisible] = useState(PAGE);
   const [cv, setCv] = useState<Candidate | null>(null);
   const [jdOpen, setJdOpen] = useState(false);
+
+  // Skeleton rows while a search step loads (filtering is instant, so this is brief and only for feedback).
+  const [loading, setLoading] = useState(false);
+  const loadingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const flashLoading = () => {
+    clearTimeout(loadingTimer.current);
+    setLoading(true);
+    loadingTimer.current = setTimeout(() => setLoading(false), SKELETON_MS);
+  };
+  useEffect(() => () => clearTimeout(loadingTimer.current), []);
   const [saveDialog, setSaveDialog] = useState<null | { steps: Filters[]; suggested: string }>(null);
   const [saved, setSaved] = useState<SavedSearch[]>(loadSaved);
 
@@ -191,6 +137,7 @@ export default function App() {
     setEditIndex(next.length - 1);
     setView('results');
     setVisible(PAGE);
+    flashLoading();
     top();
   };
 
@@ -220,6 +167,7 @@ export default function App() {
   const backToResults = () => {
     setEditIndex(steps.length - 1);
     setView('results');
+    flashLoading();
     top();
   };
 
@@ -230,6 +178,7 @@ export default function App() {
     setEditIndex(k - 1);
     setView('results');
     setVisible(PAGE);
+    flashLoading();
     top();
   };
 
@@ -241,6 +190,7 @@ export default function App() {
     replaceDraft(emptyFilters());
     setView('results');
     setVisible(PAGE);
+    flashLoading();
     top();
   };
 
@@ -278,16 +228,6 @@ export default function App() {
   const showTrailOnPanel = steps.length > 0;
   /** Only the search panel has the fixed count bar on phones, which needs room at the bottom. */
   const searchPanel = route === 'search' && view === 'panel';
-  // With the job description open the panel is taller than the screen by design, so it is not scaled.
-  const fitRef = useFitToScreen(searchPanel && !jdOpen, [
-    lang,
-    settings.showGender,
-    settings.showJdFill,
-    draft.previousCompanies.length,
-    draftCount === 0,
-    editIndex,
-    steps.length,
-  ]);
 
   return (
     <div className={`flex min-h-screen flex-col text-ink ${route === 'search' ? 'bg-page' : 'studio-bg'}`}>
@@ -299,7 +239,7 @@ export default function App() {
       />
 
       <main
-        className={`mx-auto w-full flex-1 px-4 pt-5 sm:pt-8 md:px-8 ${route === 'search' ? 'max-w-none lg:px-6 lg:pt-3' : 'max-w-[1300px]'} ${searchPanel ? 'pb-24 lg:pb-3' : 'pb-12'}`}
+        className={`mx-auto w-full flex-1 px-4 pt-5 sm:pt-8 md:px-8 ${route === 'search' ? 'max-w-[1600px] lg:px-10' : 'max-w-[1300px]'} ${searchPanel ? 'pb-24 lg:pb-12' : 'pb-12'}`}
       >
         {route === 'admin' ? (
           <AdminPage
@@ -325,12 +265,8 @@ export default function App() {
           />
         ) : view === 'panel' ? (
           <>
-            <div className="flex items-end justify-between gap-4 lg:justify-start lg:gap-4">
-              <h1 className="text-[26px] leading-tight font-extrabold tracking-tight sm:text-[32px] lg:text-[22px]">{t.pageTitle}</h1>
-              <p className="mb-[3px] hidden text-[12.5px] text-muted lg:block">{t.pageSub}</p>
-              {settings.showJdFill && (
-                <JdToggle open={jdOpen} onToggle={() => setJdOpen((o) => !o)} className="hidden lg:ml-auto lg:flex" />
-              )}
+            <div className="flex items-end justify-between gap-4">
+              <h1 className="text-[26px] leading-tight font-bold tracking-[-0.02em] sm:text-[32px]">{t.pageTitle}</h1>
               {/* On phones the bottom bar has no room for this, so it sits by the title. */}
               <button
                 type="button"
@@ -340,12 +276,12 @@ export default function App() {
                 {t.clearAll}
               </button>
             </div>
-            <p className="mt-1 text-[13px] text-muted lg:hidden">{t.pageSub}</p>
+            <p className="mt-1 text-[14px] text-muted">{t.pageSub}</p>
 
             {showTrailOnPanel && (
-              <div className="mt-5 lg:mt-2 lg:flex lg:flex-wrap lg:items-center lg:gap-x-4 lg:gap-y-1">
+              <div className="mt-5">
                 <Trail items={trailItems} />
-                <p className="mt-3 text-[13px] lg:mt-0 lg:text-[12.5px]">
+                <p className="mt-3 text-[13px]">
                   {editIndex > 0 ? t.searchingWithin(base.length, editIndex) : t.editingSearch(editIndex + 1)}{' '}
                   <button type="button" onClick={backToResults} className="underline underline-offset-2">
                     {t.backToResults}
@@ -354,10 +290,12 @@ export default function App() {
               </div>
             )}
 
-            <div ref={fitRef} className="mt-5 grid items-start sm:mt-6 lg:mt-2 lg:grid-cols-[minmax(0,1fr)_18em] lg:text-[12px]">
+            <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
               <FilterPanel
                 filters={draft}
                 onChange={patchDraft}
+                onReplace={replaceDraft}
+                onClear={() => replaceDraft(emptyFilters())}
                 onJdFill={(p) => replaceDraft({ ...draft, ...p })}
                 jdOpen={jdOpen}
                 onJdToggle={() => setJdOpen((o) => !o)}
@@ -381,6 +319,7 @@ export default function App() {
             visible={visible}
             sort={sort}
             trail={<Trail items={trailItems} />}
+            loading={loading}
             onSort={(s) => {
               setSort(s);
               setVisible(PAGE);
@@ -396,7 +335,7 @@ export default function App() {
       </main>
 
       <footer
-        className={`mx-auto w-full px-4 pt-2 text-[12px] text-muted md:px-8 ${route === 'search' ? 'max-w-none lg:px-6' : 'max-w-[1300px]'} ${searchPanel ? 'pb-28 lg:hidden' : 'pb-8'}`}
+        className={`mx-auto w-full px-4 pt-2 text-[12px] text-muted md:px-8 ${route === 'search' ? 'max-w-[1600px] lg:px-10' : 'max-w-[1300px]'} ${searchPanel ? 'pb-28 lg:pb-8' : 'pb-8'}`}
       >
         {t.footer}
       </footer>

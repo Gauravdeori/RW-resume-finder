@@ -41,8 +41,9 @@ export function AgeFilter({ filters, onChange }: { filters: Filters; onChange: (
   };
 
   return (
-    <div>
-      <div role="group" aria-label={t.rowAge} className="flex flex-wrap gap-2 lg:gap-[0.333em]">
+    // Decades, slider and caption on one line where there is room.
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div role="group" aria-label={t.rowAge} className="flex flex-wrap gap-2">
         {DECADES.map((d) => (
           <Toggle key={d} on={lit.includes(d)} onClick={() => toggleDecade(d)}>
             {t.decade(d)}
@@ -50,41 +51,40 @@ export function AgeFilter({ filters, onChange }: { filters: Filters; onChange: (
         ))}
       </div>
 
-      {/* lg: slider and caption share one line */}
-      <div className="mt-4 lg:mt-[0.5em] lg:flex lg:items-center lg:gap-[1em]">
-      <div className="dual-range max-w-[300px] lg:w-[18em] lg:flex-none">
-        <div aria-hidden className="absolute top-1/2 h-[2px] -translate-y-1/2 bg-line" style={{ left: 'calc(var(--thumb) / 2)', right: 'calc(var(--thumb) / 2)' }} />
-        <div
-          aria-hidden
-          className="absolute top-1/2 h-[2px] -translate-y-1/2 bg-ink"
-          style={{ left: pos(lo), right: `calc(100% - ${pos(hi)})` }}
-        />
-        <input
-          type="range"
-          min={AGE_MIN}
-          max={AGE_MAX}
-          step={1}
-          value={lo}
-          aria-label={t.ageMinLabel}
-          aria-valuetext={String(lo)}
-          onChange={(e) => setRange(Math.min(Number(e.target.value), hi), hi)}
-          style={{ zIndex: lo > AGE_MIN + SPAN / 2 ? 4 : 3 }}
-        />
-        <input
-          type="range"
-          min={AGE_MIN}
-          max={AGE_MAX}
-          step={1}
-          value={hi}
-          aria-label={t.ageMaxLabel}
-          aria-valuetext={String(hi)}
-          onChange={(e) => setRange(lo, Math.max(Number(e.target.value), lo))}
-          style={{ zIndex: 3 }}
-        />
-      </div>
-      <p className="mt-2 text-[13px] text-muted lg:mt-0 lg:text-[1em]" aria-live="polite">
-        {ageCaption(filters, t)}
-      </p>
+      <div className="flex items-center gap-4">
+        <div className="dual-range w-[260px] max-w-[60vw] flex-none">
+          <div aria-hidden className="absolute top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-line" style={{ left: 'calc(var(--thumb) / 2)', right: 'calc(var(--thumb) / 2)' }} />
+          <div
+            aria-hidden
+            className="absolute top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-ink transition-[left,right] duration-150"
+            style={{ left: pos(lo), right: `calc(100% - ${pos(hi)})` }}
+          />
+          <input
+            type="range"
+            min={AGE_MIN}
+            max={AGE_MAX}
+            step={1}
+            value={lo}
+            aria-label={t.ageMinLabel}
+            aria-valuetext={String(lo)}
+            onChange={(e) => setRange(Math.min(Number(e.target.value), hi), hi)}
+            style={{ zIndex: lo > AGE_MIN + SPAN / 2 ? 4 : 3 }}
+          />
+          <input
+            type="range"
+            min={AGE_MIN}
+            max={AGE_MAX}
+            step={1}
+            value={hi}
+            aria-label={t.ageMaxLabel}
+            aria-valuetext={String(hi)}
+            onChange={(e) => setRange(lo, Math.max(Number(e.target.value), lo))}
+            style={{ zIndex: 3 }}
+          />
+        </div>
+        <p className="text-[13px] whitespace-nowrap text-muted" aria-live="polite">
+          {ageCaption(filters, t)}
+        </p>
       </div>
     </div>
   );

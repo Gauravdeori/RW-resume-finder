@@ -7,8 +7,7 @@ import { cx } from './controls';
 const BODY_ID = 'jd-panel-body';
 
 /**
- * The "Start from a job description" toggle. Phones show it inside the filter card;
- * laptops show it in the page title line to keep the whole panel on one screen.
+ * The "Start from a job description" toggle, at the top of the filter card.
  */
 export function JdToggle({ open, onToggle, className }: { open: boolean; onToggle: () => void; className?: string }) {
   const { t } = useI18n();
@@ -19,12 +18,12 @@ export function JdToggle({ open, onToggle, className }: { open: boolean; onToggl
       aria-controls={BODY_ID}
       onClick={onToggle}
       className={cx(
-        'items-center gap-2 text-[14px] font-semibold lg:h-7 lg:border lg:border-control lg:bg-card lg:px-2.5 lg:text-[12px] lg:hover:border-ink',
+        'group items-center gap-2 text-[13px] font-semibold transition-colors duration-150 hover:text-accent',
         className,
       )}
     >
-      <span aria-hidden className="inline-block w-3 text-[10px]">
-        {open ? '▼' : '▶'}
+      <span aria-hidden className={cx('inline-block w-3 text-[10px] transition-transform duration-150', open && 'rotate-90')}>
+        ▶
       </span>
       {t.jdTitle}
     </button>
@@ -59,9 +58,9 @@ export function JdPanel({
     status?.kind === 'filled' ? t.jdFilled(status.n) : status?.kind === 'none' ? t.jdNone : status?.kind === 'empty' ? t.jdEmpty : '';
 
   return (
-    <div className={cx('py-4 lg:py-0', open && 'lg:pt-3 lg:pb-3')}>
-      <JdToggle open={open} onToggle={onToggle} className="flex lg:hidden" />
-      <div id={BODY_ID} hidden={!open} className="mt-3 lg:mt-0">
+    <div className="border-b border-line py-3.5">
+      <JdToggle open={open} onToggle={onToggle} className="flex" />
+      <div id={BODY_ID} hidden={!open} className="anim-fade-up mt-3">
         <textarea
           aria-label={t.jdLabel}
           placeholder={t.jdPlaceholder}
@@ -71,10 +70,14 @@ export function JdPanel({
             setText(e.target.value);
             setStatus(null);
           }}
-          className="block w-full resize-y border border-control bg-field p-3 text-[16px] leading-relaxed text-ink sm:text-[13px] outline-none placeholder:text-muted focus:border-ink"
+          className="block w-full resize-y rounded border border-line bg-field p-3 text-[16px] leading-relaxed text-ink outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-muted hover:border-ink/45 focus:border-ink/60 focus:shadow-control sm:text-[13px]"
         />
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
-          <button type="button" onClick={fill} className="h-10 border border-ink px-4 text-[13px] font-medium hover:bg-sel hover:text-on-sel lg:h-8 lg:px-3 lg:text-[12px]">
+          <button
+            type="button"
+            onClick={fill}
+            className="h-9 rounded-lg bg-sel px-4 text-[13px] font-semibold text-on-sel transition-[transform,box-shadow] duration-150 hover:-translate-y-px hover:shadow-control"
+          >
             {t.jdFill}
           </button>
           <button
@@ -88,7 +91,7 @@ export function JdPanel({
             {t.jdExample}
           </button>
           <p role="status" className="text-[13px] font-medium">
-            {status?.kind === 'filled' && <span aria-hidden className="mr-2 inline-block h-2 w-2 bg-accent align-middle" />}
+            {status?.kind === 'filled' && <span aria-hidden className="mr-2 inline-block h-2 w-2 rounded-full bg-accent align-middle" />}
             {message}
           </p>
         </div>

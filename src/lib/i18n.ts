@@ -150,6 +150,9 @@ const en = {
   showN: (n: number) => (n === 1 ? 'Show 1 candidate' : `Show ${fmtNum(n)} candidates`),
   saveSearch: 'Save search',
   clearAll: 'Clear all filters',
+  activeFilters: 'Active filters',
+  noActive: 'Nothing ticked yet. Every candidate matches.',
+  removeChip: (label: string) => `Remove ${label}`,
   zero: 'No candidates match. Remove a filter to widen the search.',
 
   resultsTitle: (n: number) => (n === 1 ? '1 candidate' : `${fmtNum(n)} candidates`),
@@ -530,6 +533,9 @@ const ja: Dict = {
   showN: (n) => `${fmtNum(n)} 名を表示`,
   saveSearch: '検索を保存',
   clearAll: '条件をすべてクリア',
+  activeFilters: '選択中の条件',
+  noActive: 'まだ条件は選択されていません。全候補者が該当します。',
+  removeChip: (label) => `${label} を解除`,
   zero: '該当する候補者がいません。条件を外して検索範囲を広げてください。',
 
   resultsTitle: (n) => `候補者 ${fmtNum(n)} 名`,

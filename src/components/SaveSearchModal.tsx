@@ -19,7 +19,7 @@ export function SaveSearchModal({
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <Modal labelledBy={titleId} onClose={onCancel} initialFocus={inputRef} className="mt-[10vh] max-w-[300px] p-4">
+    <Modal labelledBy={titleId} onClose={onCancel} initialFocus={inputRef} className="mt-[10vh] max-w-[340px] rounded-xl p-5">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -29,7 +29,7 @@ export function SaveSearchModal({
         <h2 id={titleId} className="text-[15px] font-bold">
           {t.nameThisSearch}
         </h2>
-        <label htmlFor={inputId} className="mt-4 mb-1.5 block text-[12px] text-muted">
+        <label htmlFor={inputId} className="mt-4 mb-1 block text-[12px] text-muted">
           {t.searchName}
         </label>
         <input
@@ -38,16 +38,16 @@ export function SaveSearchModal({
           value={name}
           onChange={(e) => setName(e.target.value)}
           onFocus={(e) => e.currentTarget.select()}
-          className="h-10 w-full border border-ink bg-field px-3 text-[16px] text-ink outline-none sm:text-[14px]"
+          className="h-9 w-full rounded border border-line bg-field px-3 py-2 text-[16px] text-ink outline-none transition-[border-color,box-shadow] duration-150 focus:border-ink/60 focus:shadow-control sm:text-[14px]"
         />
         <div className="mt-4 flex justify-end gap-3">
-          <button type="button" onClick={onCancel} className="h-9 border border-ink px-4 text-[13px]">
+          <button type="button" onClick={onCancel} className="h-9 rounded-lg border border-line px-4 text-[13px] font-medium hover:border-ink/45">
             {t.cancel}
           </button>
           <button
             type="submit"
             disabled={!name.trim()}
-            className="h-9 bg-accent px-4 text-[13px] font-bold text-on-accent disabled:cursor-not-allowed disabled:opacity-45"
+            className="h-9 rounded-lg bg-accent px-4 text-[13px] font-bold text-on-accent shadow-accent disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
           >
             {t.save}
           </button>

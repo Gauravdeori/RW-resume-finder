@@ -12,17 +12,15 @@ const FOREIGN: ForeignFilter[] = ['any', 'never', 'once', 'twice'];
 const AT_LEAST: LevelFilter[] = ['any', 'Conversational', 'Business', 'Fluent', 'Native'];
 const OVERSEAS: OverseasFilter[] = ['any', 'yes', 'no'];
 
-/**
- * Gaishi fit: either pick a score A–D, or set its parts.
- * Tablets: two columns. Laptops/desktops: one tight list with labels beside the buttons.
- */
+/** Gaishi fit: either pick a score A–D, or set its parts. */
 export function GaishiFilter({ filters, onChange }: { filters: Filters; onChange: (p: Partial<Filters>) => void }) {
   const { t } = useI18n();
   // Clicking the selected option again goes back to "Any".
   const single = <T extends string>(current: T, v: T) => (current === v ? ('any' as T) : v);
 
   return (
-    <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-1 lg:gap-y-[0.333em]">
+    // One group per line, so every row of buttons starts on the panel's control line and never wraps.
+    <div className="flex max-w-[880px] flex-col gap-4">
       <div>
         <ToggleGroup label={t.gaishiScore}>
           {GAISHI_SCORES.map((g) => (
@@ -30,13 +28,13 @@ export function GaishiFilter({ filters, onChange }: { filters: Filters; onChange
               key={g}
               on={filters.gaishiScores.includes(g)}
               onClick={() => onChange({ gaishiScores: toggleIn(filters.gaishiScores, g) })}
-              className="w-9 px-0 font-bold lg:w-[2.333em] lg:px-0"
+              className="w-9 px-0 font-bold"
             >
               {g}
             </Toggle>
           ))}
         </ToggleGroup>
-        <p className="mt-2 text-[12px] leading-snug text-muted lg:mt-[0.167em] lg:text-[0.917em]">{t.gaishiHelp}</p>
+        <p className="mt-1.5 text-[12px] leading-snug text-muted">{t.gaishiHelp}</p>
       </div>
       <ToggleGroup label={t.foreignLabel}>
         {FOREIGN.map((o) => (

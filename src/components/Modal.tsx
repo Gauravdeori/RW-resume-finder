@@ -61,7 +61,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--overlay)] px-3 py-3 sm:px-4 sm:py-[8vh]"
+      className="anim-fade-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[color-mix(in_srgb,var(--overlay)_70%,transparent)] px-3 py-3 backdrop-blur-[6px] sm:px-4 sm:py-[8vh]"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -72,7 +72,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={labelledBy}
         tabIndex={-1}
-        className={cx('relative w-full border border-line bg-card text-ink shadow-[0_12px_40px_rgba(0,0,0,0.18)] outline-none', className)}
+        className={cx('anim-slide-up relative w-full border border-line bg-card text-ink shadow-[0_24px_64px_rgba(0,0,0,0.22)] outline-none', className)}
       >
         {children}
       </div>

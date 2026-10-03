@@ -9,25 +9,29 @@ import {
   type FilterGender,
   type Filters,
 } from '../lib/types';
+import { ActiveFilters } from './ActiveFilters';
 import { AgeFilter } from './AgeFilter';
 import { CheckTile, FilterRow, TextField, Toggle, ToggleGroup, toggleIn } from './controls';
 import { GaishiFilter } from './GaishiFilter';
 import { JdPanel } from './JdPanel';
 
 const GENDERS: FilterGender[] = ['male', 'female'];
-/** Phones: tiles in a grid. Laptops/desktops: compact chips that wrap. */
-const TILES = 'grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:flex lg:flex-wrap lg:gap-[0.333em]';
+/** Same width for every block of controls, so rows line up on the right too. */
+const WIDE = 'max-w-[880px]';
+const FIELDS = 'grid max-w-[560px] grid-cols-2 gap-3';
+/** Industry and position tiles: equal columns wide enough for one-line labels (36px tall), 8px gaps. */
+const TILES = `grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(232px,1fr))] ${WIDE}`;
 
 /**
  * Every filter on one page. Buttons and tiles only; no dropdowns.
- * Laptops and desktops: three dense columns so the whole panel fits on one screen without scrolling
- * (reviewer feedback: Japanese recruiters prefer information packed together). Sizes there are in em,
- * so App can scale the panel to fill the screen height exactly (see useFitToScreen).
- * Tablets: two columns. Phones: one column with touch-sized controls.
+ * Every row uses the same grid (160px label column, 40px gap, controls), so all labels share one left edge
+ * and all controls start on one vertical line.
  */
 export function FilterPanel({
   filters,
   onChange,
+  onReplace,
+  onClear,
   onJdFill,
   jdOpen,
   onJdToggle,
@@ -36,6 +40,9 @@ export function FilterPanel({
 }: {
   filters: Filters;
   onChange: (p: Partial<Filters>) => void;
+  /** Replace all filters at once (chip removal). */
+  onReplace: (f: Filters) => void;
+  onClear: () => void;
   onJdFill: (p: Partial<Filters>) => void;
   jdOpen: boolean;
   onJdToggle: () => void;
@@ -51,154 +58,140 @@ export function FilterPanel({
   const removePrevious = (i: number) => onChange({ previousCompanies: f.previousCompanies.filter((_, j) => j !== i) });
 
   return (
-    <div aria-label={t.filtersLabel} role="region" className="-mx-4 bg-card px-4 sm:mx-0 sm:px-5 lg:flex lg:flex-col lg:px-[1.333em] lg:pb-[0.333em]">
+    <div
+      aria-label={t.filtersLabel}
+      role="region"
+      className="-mx-4 bg-card px-4 shadow-card sm:mx-0 sm:rounded-xl sm:px-6"
+    >
       {showJdFill && <JdPanel open={jdOpen} onToggle={onJdToggle} onFill={onJdFill} />}
+      <ActiveFilters filters={f} onReplace={onReplace} onClear={onClear} />
 
-      <div className="grid md:grid-cols-2 md:gap-x-6 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,0.98fr)_minmax(0,1.1fr)] lg:flex-1 lg:gap-x-[1.5em]">
-        {/* Column 1, background: name, company, education */}
-        <div className="min-w-0 lg:flex lg:flex-col lg:justify-between lg:[&>section:first-child]:border-t-0">
-          <FilterRow label={t.rowName}>
-            <div className="grid grid-cols-2 gap-3 lg:gap-[0.667em]">
-              <TextField label={t.lastName} value={f.lastName} onChange={(v) => onChange({ lastName: v })} />
-              <TextField label={t.firstName} value={f.firstName} onChange={(v) => onChange({ firstName: v })} />
-            </div>
-          </FilterRow>
-
-          <FilterRow
-            label={t.rowCompany}
-            action={
-              <button
-                type="button"
-                onClick={() => onChange({ previousCompanies: [...f.previousCompanies, ''] })}
-                className="text-right text-[13px] underline underline-offset-2 lg:text-[0.958em]"
-              >
-                {t.addPrevious}
-              </button>
-            }
-          >
-            <div className="grid grid-cols-2 gap-3 lg:gap-[0.667em]">
-              <TextField label={t.currentCompany} value={f.currentCompany} onChange={(v) => onChange({ currentCompany: v })} />
-              <div className="flex flex-col gap-3 lg:gap-[0.5em]">
-                {f.previousCompanies.map((p, i) => (
-                  <TextField
-                    key={i}
-                    label={i === 0 ? t.previousCompany : `${t.previousCompany} ${i + 1}`}
-                    value={p}
-                    onChange={(v) => setPrevious(i, v)}
-                    trailing={
-                      i > 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => removePrevious(i)}
-                          aria-label={t.removePrevious}
-                          className="h-11 w-10 flex-none border border-l-0 border-control text-[16px] text-muted hover:text-ink sm:h-10 lg:h-[2.667em] lg:w-[2.667em]"
-                        >
-                          ×
-                        </button>
-                      ) : null
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-          </FilterRow>
-
-          <FilterRow label={t.rowEducation}>
-            <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-1 lg:gap-y-[0.333em]">
-              <ToggleGroup label={t.degreeLabel}>
-                {DEGREES.map((d) => (
-                  <Toggle key={d} on={f.degrees.includes(d)} onClick={() => onChange({ degrees: toggleIn(f.degrees, d) })}>
-                    {t.degree[d]}
-                  </Toggle>
-                ))}
-              </ToggleGroup>
-              <ToggleGroup label={t.schoolClassLabel}>
-                {SCHOOL_CLASSES.map((c) => (
-                  <Toggle
-                    key={c}
-                    on={f.schoolClasses.includes(c)}
-                    onClick={() => onChange({ schoolClasses: toggleIn(f.schoolClasses, c) })}
-                    className={c === 'Overseas' ? undefined : 'w-9 px-0 font-bold lg:w-[2.333em] lg:px-0'}
-                  >
-                    {t.schoolClass[c]}
-                  </Toggle>
-                ))}
-              </ToggleGroup>
-              <ToggleGroup label={t.majorLabel}>
-                {MAJORS.map((m) => (
-                  <Toggle key={m} on={f.majors.includes(m)} onClick={() => onChange({ majors: toggleIn(f.majors, m) })}>
-                    {t.major[m]}
-                  </Toggle>
-                ))}
-              </ToggleGroup>
-              <TextField label={t.schoolName} value={f.schoolName} onChange={(v) => onChange({ schoolName: v })} />
-            </div>
-          </FilterRow>
+      <FilterRow label={t.rowName}>
+        <div className={FIELDS}>
+          <TextField label={t.lastName} value={f.lastName} onChange={(v) => onChange({ lastName: v })} />
+          <TextField label={t.firstName} value={f.firstName} onChange={(v) => onChange({ firstName: v })} />
         </div>
+      </FilterRow>
 
-        {/* Column 2, role: seniority, industry, position */}
-        <div className="min-w-0 lg:flex lg:flex-col lg:justify-between lg:[&>section:first-child]:border-t-0">
-          <FilterRow label={t.rowSeniority}>
-            <div role="group" aria-label={t.rowSeniority} className="flex flex-wrap gap-2 lg:gap-[0.333em]">
-              {SENIORITIES.map((s) => (
-                <Toggle key={s} on={f.seniority.includes(s)} onClick={() => onChange({ seniority: toggleIn(f.seniority, s) })}>
-                  <span className="font-bold">{s}</span>
-                  <span>{t.seniorityButton[s]}</span>
+      <FilterRow label={t.rowCompany}>
+        <div className={FIELDS}>
+          <TextField label={t.currentCompany} value={f.currentCompany} onChange={(v) => onChange({ currentCompany: v })} />
+          <div className="flex flex-col gap-2">
+            {f.previousCompanies.map((p, i) => (
+              <TextField
+                key={i}
+                label={i === 0 ? t.previousCompany : `${t.previousCompany} ${i + 1}`}
+                value={p}
+                onChange={(v) => setPrevious(i, v)}
+                trailing={
+                  i > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => removePrevious(i)}
+                      aria-label={t.removePrevious}
+                      className="h-9 w-9 flex-none rounded-r border border-l-0 border-line text-[16px] text-muted transition-colors duration-150 hover:text-accent"
+                    >
+                      ×
+                    </button>
+                  ) : null
+                }
+              />
+            ))}
+          </div>
+        </div>
+        <div className="mt-2 grid max-w-[560px] grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => onChange({ previousCompanies: [...f.previousCompanies, ''] })}
+            className="col-span-2 justify-self-start text-left text-[12.5px] sm:col-span-1 sm:col-start-2 text-muted underline underline-offset-2 transition-colors duration-150 hover:text-ink"
+          >
+            + {t.addPrevious}
+          </button>
+        </div>
+      </FilterRow>
+
+      <FilterRow label={t.rowAge}>
+        <AgeFilter filters={f} onChange={onChange} />
+      </FilterRow>
+
+      {showGender && (
+        <FilterRow label={t.rowGender}>
+          <div role="group" aria-label={t.rowGender} className="flex flex-wrap gap-2">
+            {GENDERS.map((g) => (
+              <Toggle key={g} on={f.genders.includes(g)} onClick={() => onChange({ genders: toggleIn(f.genders, g) })}>
+                {t.gender[g]}
+              </Toggle>
+            ))}
+          </div>
+        </FilterRow>
+      )}
+
+      <FilterRow label={t.rowSeniority}>
+        <div role="group" aria-label={t.rowSeniority} className={`flex flex-wrap gap-2 ${WIDE}`}>
+          {SENIORITIES.map((s) => (
+            <Toggle key={s} on={f.seniority.includes(s)} onClick={() => onChange({ seniority: toggleIn(f.seniority, s) })}>
+              <span className="font-bold">{s}</span>
+              <span>{t.seniorityButton[s]}</span>
+            </Toggle>
+          ))}
+        </div>
+      </FilterRow>
+
+      <FilterRow label={t.rowIndustry}>
+        <div role="group" aria-label={t.rowIndustry} className={TILES}>
+          {INDUSTRIES.map((i) => (
+            <CheckTile key={i} on={f.industries.includes(i)} onClick={() => onChange({ industries: toggleIn(f.industries, i) })} label={t.industry[i]} />
+          ))}
+        </div>
+      </FilterRow>
+
+      <FilterRow label={t.rowPosition}>
+        <div role="group" aria-label={t.rowPosition} className={TILES}>
+          {POSITIONS.map((p) => (
+            <CheckTile key={p} on={f.positions.includes(p)} onClick={() => onChange({ positions: toggleIn(f.positions, p) })} label={t.position[p]} />
+          ))}
+        </div>
+      </FilterRow>
+
+      <FilterRow label={t.rowGaishi} sub={t.gaishiSub}>
+        <GaishiFilter filters={f} onChange={onChange} />
+      </FilterRow>
+
+      <FilterRow label={t.rowEducation}>
+        <div className={`grid gap-x-8 gap-y-4 sm:grid-cols-2 ${WIDE}`}>
+          <div className="flex flex-col gap-4">
+            <ToggleGroup label={t.degreeLabel}>
+              {DEGREES.map((d) => (
+                <Toggle key={d} on={f.degrees.includes(d)} onClick={() => onChange({ degrees: toggleIn(f.degrees, d) })}>
+                  {t.degree[d]}
                 </Toggle>
               ))}
-            </div>
-          </FilterRow>
-
-          <FilterRow label={t.rowIndustry}>
-            <div role="group" aria-label={t.rowIndustry} className={TILES}>
-              {INDUSTRIES.map((i) => (
-                <CheckTile
-                  key={i}
-                  on={f.industries.includes(i)}
-                  onClick={() => onChange({ industries: toggleIn(f.industries, i) })}
-                  label={t.industry[i]}
-                />
+            </ToggleGroup>
+            <ToggleGroup label={t.majorLabel}>
+              {MAJORS.map((m) => (
+                <Toggle key={m} on={f.majors.includes(m)} onClick={() => onChange({ majors: toggleIn(f.majors, m) })}>
+                  {t.major[m]}
+                </Toggle>
               ))}
-            </div>
-          </FilterRow>
-
-          <FilterRow label={t.rowPosition}>
-            <div role="group" aria-label={t.rowPosition} className={TILES}>
-              {POSITIONS.map((p) => (
-                <CheckTile
-                  key={p}
-                  on={f.positions.includes(p)}
-                  onClick={() => onChange({ positions: toggleIn(f.positions, p) })}
-                  label={t.position[p]}
-                />
+            </ToggleGroup>
+          </div>
+          <div className="flex flex-col gap-4">
+            <ToggleGroup label={t.schoolClassLabel}>
+              {SCHOOL_CLASSES.map((c) => (
+                <Toggle
+                  key={c}
+                  on={f.schoolClasses.includes(c)}
+                  onClick={() => onChange({ schoolClasses: toggleIn(f.schoolClasses, c) })}
+                  className={c === 'Overseas' ? undefined : 'w-9 px-0 font-bold'}
+                >
+                  {t.schoolClass[c]}
+                </Toggle>
               ))}
-            </div>
-          </FilterRow>
+            </ToggleGroup>
+            <TextField label={t.schoolName} value={f.schoolName} onChange={(v) => onChange({ schoolName: v })} />
+          </div>
         </div>
-
-        {/* Column 3, fit: gaishi, age, gender */}
-        <div className="min-w-0 lg:flex lg:flex-col lg:justify-between lg:[&>section:first-child]:border-t-0">
-          <FilterRow label={t.rowGaishi} sub={t.gaishiSub}>
-            <GaishiFilter filters={f} onChange={onChange} />
-          </FilterRow>
-
-          <FilterRow label={t.rowAge}>
-            <AgeFilter filters={f} onChange={onChange} />
-          </FilterRow>
-
-          {showGender && (
-            <FilterRow label={t.rowGender}>
-              <div role="group" aria-label={t.rowGender} className="flex flex-wrap gap-2 lg:gap-[0.333em]">
-                {GENDERS.map((g) => (
-                  <Toggle key={g} on={f.genders.includes(g)} onClick={() => onChange({ genders: toggleIn(f.genders, g) })}>
-                    {t.gender[g]}
-                  </Toggle>
-                ))}
-              </div>
-            </FilterRow>
-          )}
-        </div>
-      </div>
+      </FilterRow>
     </div>
   );
 }
