@@ -3,11 +3,11 @@ import { useId, type ReactNode } from 'react';
 export const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(' ');
 
 /**
- * Shared look for 36px controls: 4px corners, 150ms transitions, a slight lift on hover.
+ * Shared look for 36px controls: 4px corners, a slight lift on hover.
+ * Only transform is animated (150ms); colours and shadows switch instantly.
  * Selected = charcoal fill + white text (white fill + charcoal text in dark mode).
  */
-const CONTROL =
-  'rounded border transition-[transform,box-shadow,border-color,background-color,color] duration-150 ease-out hover:-translate-y-px hover:shadow-control active:translate-y-0';
+const CONTROL = 'rounded border transition-transform duration-150 ease-out hover:-translate-y-px hover:shadow-control active:translate-y-0';
 const OFF = 'border-line bg-field text-ink hover:border-ink/45';
 const ON = 'border-sel bg-sel text-on-sel';
 
@@ -43,7 +43,7 @@ export function Toggle({
   );
 }
 
-/** Checkbox tile used for industry and position: shows a tick when on. */
+/** Checkbox tile used for industry and position: shows a tick when on. Labels stay on one line. */
 export function CheckTile({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
   return (
     <button
@@ -51,12 +51,12 @@ export function CheckTile({ on, onClick, label }: { on: boolean; onClick: () => 
       role="checkbox"
       aria-checked={on}
       onClick={onClick}
-      className={cx('flex min-h-9 items-center gap-2 px-3 py-1.5 text-left text-[13px] leading-[1.15]', CONTROL, on ? ON : OFF)}
+      className={cx('flex h-9 items-center gap-2 px-3 text-left text-[13px] leading-none whitespace-nowrap', CONTROL, on ? ON : OFF)}
     >
       <span
         aria-hidden
         className={cx(
-          'flex h-[14px] w-[14px] flex-none items-center justify-center rounded-[3px] border transition-colors duration-150',
+          'flex h-[14px] w-[14px] flex-none items-center justify-center rounded-[3px] border',
           on ? 'border-on-sel bg-on-sel text-sel' : 'border-muted/70',
         )}
       >
@@ -80,16 +80,19 @@ export function TextField({
   value,
   onChange,
   trailing,
+  hideLabel,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   trailing?: ReactNode;
+  /** The row label already says what this is: keep the label for screen readers only. */
+  hideLabel?: boolean;
 }) {
   const id = useId();
   return (
     <div className="min-w-0">
-      <label htmlFor={id} className="mb-1 block text-[12px] leading-tight text-muted">
+      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'mb-1 block text-[12px] leading-tight text-muted'}>
         {label}
       </label>
       <div className="flex">
@@ -101,7 +104,7 @@ export function TextField({
           onChange={(e) => onChange(e.target.value)}
           className={cx(
             'h-9 w-full min-w-0 rounded border border-line bg-field px-3 py-2 text-[16px] text-ink outline-none sm:text-[14px]',
-            'transition-[border-color,box-shadow] duration-150 hover:border-ink/45 focus:border-ink/60 focus:shadow-control',
+            'hover:border-ink/45 focus:border-ink/60 focus:shadow-control',
             'focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent',
             trailing ? 'rounded-r-none' : undefined,
           )}
@@ -113,25 +116,21 @@ export function TextField({
 }
 
 /**
- * A filter row. Every row uses the same grid: a fixed 160px label column, a 40px gap, then the controls,
- * so all row labels share one left edge and all controls start on one vertical line.
- * Phones: label above the controls.
+ * A filter row (Ted's grid, sized for the 380px sidebar): a fixed 80px label column, a 12px gap,
+ * then the controls, so all row labels share one left edge and all controls start on one vertical line.
  */
 export function FilterRow({ label, sub, children }: { label: string; sub?: string; children: ReactNode }) {
   const id = useId();
   return (
-    <section
-      aria-labelledby={id}
-      className="grid gap-2.5 border-t border-line py-3 first:border-t-0 md:grid-cols-[160px_minmax(0,1fr)] md:gap-x-10 md:gap-y-0"
-    >
-      <div className="md:pt-[9px]">
-        <h2 id={id} className="text-[13px] leading-tight font-semibold">
+    <div role="group" aria-labelledby={id} className="grid grid-cols-[80px_minmax(0,1fr)] gap-x-3 py-2.5">
+      <div className="pt-[10px]">
+        <h3 id={id} className="text-[12.5px] leading-tight font-semibold">
           {label}
-        </h2>
-        {sub && <p className="mt-1 text-[12px] leading-snug text-muted">{sub}</p>}
+        </h3>
+        {sub && <p className="mt-1 text-[11.5px] leading-snug text-muted">{sub}</p>}
       </div>
       <div className="min-w-0">{children}</div>
-    </section>
+    </div>
   );
 }
 

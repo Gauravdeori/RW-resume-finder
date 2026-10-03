@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 /**
  * Pages reachable from the top bar. Hash routes work on any static host (Vercel, Netlify) without rewrites.
@@ -27,9 +27,9 @@ export function useHashRoute(): [Route, (r: Route) => void] {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  const go = (r: Route) => {
+  const go = useCallback((r: Route) => {
     if (parse(window.location.hash) === r) return;
     window.location.hash = hrefFor(r);
-  };
+  }, []);
   return [route, go];
 }

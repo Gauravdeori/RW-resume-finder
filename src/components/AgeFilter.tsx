@@ -1,12 +1,10 @@
 import { ageCaption } from '../lib/describe';
 import { litDecades } from '../lib/filter';
 import { useI18n } from '../lib/i18n';
-import { AGE_MAX, AGE_MIN, DECADES, type Filters } from '../lib/types';
+import { AGE_MAX, AGE_MIN, DECADES, type AgeFields } from '../lib/types';
 import { Toggle } from './controls';
 
-type AgePatch = Pick<Filters, 'ageMode' | 'decades' | 'ageMin' | 'ageMax'>;
-
-const ANY: AgePatch = { ageMode: 'any', decades: [], ageMin: AGE_MIN, ageMax: AGE_MAX };
+const ANY: AgeFields = { ageMode: 'any', decades: [], ageMin: AGE_MIN, ageMax: AGE_MAX };
 const SPAN = AGE_MAX - AGE_MIN;
 
 /**
@@ -22,7 +20,7 @@ const pos = (v: number) => {
  * Two ways to set age: decade buttons (quick) or a two-handle slider (exact).
  * Clicking decades moves the handles; dragging lights the decades it covers. The control touched last decides.
  */
-export function AgeFilter({ filters, onChange }: { filters: Filters; onChange: (p: AgePatch) => void }) {
+export function AgeFilter({ filters, onChange }: { filters: AgeFields; onChange: (p: AgeFields) => void }) {
   const { t } = useI18n();
   const lit = litDecades(filters);
   const lo = filters.ageMin;
@@ -42,21 +40,21 @@ export function AgeFilter({ filters, onChange }: { filters: Filters; onChange: (
 
   return (
     // Decades, slider and caption on one line where there is room.
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-      <div role="group" aria-label={t.rowAge} className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-3">
+      <div role="group" aria-label={t.rowAge} className="grid max-w-[280px] grid-cols-5 gap-1.5">
         {DECADES.map((d) => (
-          <Toggle key={d} on={lit.includes(d)} onClick={() => toggleDecade(d)}>
+          <Toggle key={d} on={lit.includes(d)} onClick={() => toggleDecade(d)} className="px-0">
             {t.decade(d)}
           </Toggle>
         ))}
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="dual-range w-[260px] max-w-[60vw] flex-none">
+      <div className="flex items-center gap-3">
+        <div className="dual-range min-w-0 max-w-[240px] flex-1">
           <div aria-hidden className="absolute top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-line" style={{ left: 'calc(var(--thumb) / 2)', right: 'calc(var(--thumb) / 2)' }} />
           <div
             aria-hidden
-            className="absolute top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-ink transition-[left,right] duration-150"
+            className="absolute top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-ink"
             style={{ left: pos(lo), right: `calc(100% - ${pos(hi)})` }}
           />
           <input

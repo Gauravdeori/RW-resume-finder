@@ -1,28 +1,31 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CountRail } from './components/CountRail';
-import { AdminPage } from './components/AdminPage';
-import { CvModal } from './components/CvModal';
-import { DashboardPage } from './components/DashboardPage';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { FilterPanel } from './components/FilterPanel';
-import { ResultsList } from './components/ResultsList';
+import { FilterSheet, MobileBar } from './components/MobileFilters';
+import { ResultsPane } from './components/ResultsPane';
 import { SaveSearchModal } from './components/SaveSearchModal';
 import { TopBar } from './components/TopBar';
 import { Trail, type TrailItem } from './components/Trail';
-import { UploadPage, type UploadSettings } from './components/UploadPage';
+import type { UploadSettings } from './components/UploadPage';
 import { DEFAULT_SETTINGS, loadSettings, storeSettings, type AppSettings } from './lib/admin';
 import { KEEP_LAST, clearStoredConversions, loadConversions, newConversion, storeConversions, type Conversion } from './lib/conversions';
 import { CANDIDATES } from './lib/data';
-import { suggestName } from './lib/describe';
-import { chainSteps, countMatches, sortCandidates, type SortKey } from './lib/filter';
-import { useI18n } from './lib/i18n';
+import { activeChips, countActiveFilters, suggestName } from './lib/describe';
+import { chainSteps, runFilter, sortResults, type SortKey } from './lib/filter';
+import { fmtNum, useI18n } from './lib/i18n';
 import { useHashRoute } from './lib/route';
 import { clearStoredSaved, loadSaved, newSavedId, storeSaved, type SavedSearch } from './lib/savedSearches';
 import { cloneFilters, emptyFilters, type Candidate, type Filters } from './lib/types';
+import { encodeFilters, readSearchState, writeSearchState } from './lib/urlState';
+import { useMediaQuery } from './lib/useMediaQuery';
 
-const PAGE = 10;
-/** How long skeleton rows show when switching search steps. */
-const SKELETON_MS = 320;
-const TEXT_DEBOUNCE_MS = 300;
+// Loaded on demand: the CV drawer when a CV is first opened, the other pages when first visited.
+const CvDrawer = lazy(() => import('./components/CvDrawer'));
+const UploadPage = lazy(() => import('./components/UploadPage').then((m) => ({ default: m.UploadPage })));
+const DashboardPage = lazy(() => import('./components/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const AdminPage = lazy(() => import('./components/AdminPage').then((m) => ({ default: m.AdminPage })));
+
+const TEXT_DEBOUNCE_MS = 250;
+const DESKTOP = '(min-width: 1024px)';
 
 type TextPart = Pick<Filters, 'lastName' | 'firstName' | 'currentCompany' | 'previousCompanies' | 'schoolName'>;
 const textOf = (f: Filters): string =>
@@ -40,8 +43,8 @@ const withText = (f: Filters, key: string): Filters => {
 };
 
 /**
- * Clicks recount at once; typing recounts ~300 ms after the last key press.
- * When the whole draft is replaced (new step, edit, clear, JD fill) `version` changes and text applies at once.
+ * Clicks apply at once; typing applies ~250 ms after the last key press.
+ * When the whole draft is replaced (new step, trail jump, clear, chip, JD fill) `version` changes and text applies at once.
  */
 function useLiveFilters(f: Filters, version: number): Filters {
   const key = textOf(f);
@@ -59,12 +62,13 @@ function useLiveFilters(f: Filters, version: number): Filters {
   return useMemo(() => withText(f, effectiveKey), [f, effectiveKey]);
 }
 
-type View = 'panel' | 'results';
+const initial = readSearchState();
 
 export default function App() {
   const { t } = useI18n();
-  // Upload Resume, Dashboard and Search are separate pages; search state is kept while you move between them.
+  // Upload Resume, Dashboard and Admin are separate pages; Resume Finder itself is one page.
   const [route, go] = useHashRoute();
+  const desktop = useMediaQuery(DESKTOP);
 
   // Dummy Resume Studio conversions, newest first, trimmed to the last KEEP_LAST.
   const [conversions, setConversions] = useState<Conversion[]>(loadConversions);
@@ -76,35 +80,19 @@ export default function App() {
     return { status: settings.source === settings.target ? ('exported' as const) : ('review' as const) };
   }, []);
 
-  // Search within results: each committed step stores its own filters.
-  // A step's result is its filters applied to the previous step's result.
-  const [steps, setSteps] = useState<Filters[]>([]);
-  const [view, setView] = useState<View>('panel');
-  /** Index of the step the panel is editing: steps.length for a new step, steps.length - 1 for "Edit filters". */
-  const [editIndex, setEditIndex] = useState(0);
-  const [draft, setDraft] = useState<Filters>(emptyFilters);
+  // Search within results: each locked step keeps its own filters; the draft is the step being edited now.
+  // A step's result is its filters applied to the previous step's result. State starts from the URL.
+  const [steps, setSteps] = useState<Filters[]>(initial.steps);
+  const [draft, setDraft] = useState<Filters>(initial.draft);
   const [draftVersion, setDraftVersion] = useState(0);
-
-  const [sort, setSort] = useState<SortKey>('best');
-  const [visible, setVisible] = useState(PAGE);
+  const [sort, setSort] = useState<SortKey>(initial.sort);
   const [cv, setCv] = useState<Candidate | null>(null);
-  const [jdOpen, setJdOpen] = useState(false);
-
-  // Skeleton rows while a search step loads (filtering is instant, so this is brief and only for feedback).
-  const [loading, setLoading] = useState(false);
-  const loadingTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const flashLoading = () => {
-    clearTimeout(loadingTimer.current);
-    setLoading(true);
-    loadingTimer.current = setTimeout(() => setLoading(false), SKELETON_MS);
-  };
-  useEffect(() => () => clearTimeout(loadingTimer.current), []);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [saveDialog, setSaveDialog] = useState<null | { steps: Filters[]; suggested: string }>(null);
   const [saved, setSaved] = useState<SavedSearch[]>(loadSaved);
-
   useEffect(() => storeSaved(saved), [saved]);
 
-  // Admin settings that change the Search page.
+  // Admin settings that change the search.
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
   useEffect(() => storeSettings(settings), [settings]);
   /** With the gender filter switched off in Admin, any gender choice is ignored, including in saved searches. */
@@ -112,93 +100,82 @@ export default function App() {
     (f: Filters): Filters => (settings.showGender || !f.genders.length ? f : { ...f, genders: [] }),
     [settings.showGender],
   );
-  const effectiveSteps = useMemo(() => steps.map(applySettings), [steps, applySettings]);
 
-  const stepResults = useMemo(() => chainSteps(effectiveSteps), [effectiveSteps]);
-  const base = stepResults[Math.min(editIndex, stepResults.length - 1)];
+  // ---------- results: pure functions over precomputed indexes, memoised on steps + filters + sort ----------
+
+  const stepResults = useMemo(() => chainSteps(steps.map(applySettings)), [steps, applySettings]);
+  const base = stepResults[stepResults.length - 1];
   const liveDraft = useLiveFilters(draft, draftVersion);
-  const draftCount = useMemo(() => countMatches(base, applySettings(liveDraft)), [base, liveDraft, applySettings]);
+  const results = useMemo(() => runFilter(base, applySettings(liveDraft)), [base, liveDraft, applySettings]);
+  const sorted = useMemo(() => sortResults(results, sort), [results, sort]);
 
-  const current = stepResults[stepResults.length - 1];
-  const sorted = useMemo(() => sortCandidates(current, sort), [current, sort]);
+  // Keep the URL in step (replaceState: no reloads, no history entries), so a search can be shared or refreshed.
+  useEffect(() => writeSearchState({ steps, draft: liveDraft, sort }), [steps, liveDraft, sort]);
 
-  // ---------- actions ----------
+  // ---------- actions (stable, so the memoised sidebar and results skip re-rendering) ----------
+
+  // Handlers read the latest draft and steps from refs, so typing does not give them a new identity.
+  const latest = useRef({ draft, steps });
+  useLayoutEffect(() => {
+    latest.current = { draft, steps };
+  });
 
   const replaceDraft = useCallback((f: Filters) => {
     setDraft(f);
     setDraftVersion((v) => v + 1);
   }, []);
   const patchDraft = useCallback((p: Partial<Filters>) => setDraft((d) => ({ ...d, ...p })), []);
-  const top = () => window.scrollTo({ top: 0 });
+  const fillDraft = useCallback((p: Partial<Filters>) => {
+    setDraft((d) => ({ ...d, ...p }));
+    setDraftVersion((v) => v + 1);
+  }, []);
+  const clearDraft = useCallback(() => replaceDraft(emptyFilters()), [replaceDraft]);
+  const removeChip = useCallback(
+    (id: string) => {
+      setDraft((d) => activeChips(d, t).find((c) => c.id === id)?.remove(d) ?? d);
+      setDraftVersion((v) => v + 1);
+    },
+    [t],
+  );
 
-  const showResults = () => {
-    const next = [...steps.slice(0, editIndex), cloneFilters(draft)];
-    setSteps(next);
-    setEditIndex(next.length - 1);
-    setView('results');
-    setVisible(PAGE);
-    flashLoading();
-    top();
-  };
-
-  const searchWithin = () => {
-    setEditIndex(steps.length);
+  /** Lock the current results as a step in the trail and start the next step with an empty panel. */
+  const searchWithin = useCallback(() => {
+    setSteps((s) => [...s, cloneFilters(latest.current.draft)]);
     replaceDraft(emptyFilters());
-    setView('panel');
-    top();
-  };
+  }, [replaceDraft]);
 
-  const editFilters = () => {
-    if (!steps.length) return;
-    setEditIndex(steps.length - 1);
-    replaceDraft(cloneFilters(steps[steps.length - 1]));
-    setView('panel');
-    top();
-  };
+  /** Go back to locked step k (k = -1 is "All candidates"): its filters return to the panel; later steps go. */
+  const jumpTo = useCallback(
+    (k: number) => {
+      if (k < 0) {
+        setSteps([]);
+        replaceDraft(emptyFilters());
+        return;
+      }
+      const { steps } = latest.current;
+      replaceDraft(cloneFilters(steps[k]));
+      setSteps(steps.slice(0, k));
+    },
+    [replaceDraft],
+  );
 
-  const newSearch = () => {
-    setSteps([]);
-    setEditIndex(0);
-    replaceDraft(emptyFilters());
-    setView('panel');
-    top();
-  };
+  const runSaved = useCallback(
+    (s: SavedSearch) => {
+      go('search');
+      const list = s.steps.map(cloneFilters);
+      setSteps(list.slice(0, -1));
+      replaceDraft(list[list.length - 1] ?? emptyFilters());
+    },
+    [go, replaceDraft],
+  );
 
-  const backToResults = () => {
-    setEditIndex(steps.length - 1);
-    setView('results');
-    flashLoading();
-    top();
-  };
-
-  /** Jump to an earlier step: k = 0 is "All candidates"; later steps are removed. */
-  const jumpTo = (k: number) => {
-    if (k === 0) return newSearch();
-    setSteps((s) => s.slice(0, k));
-    setEditIndex(k - 1);
-    setView('results');
-    setVisible(PAGE);
-    flashLoading();
-    top();
-  };
-
-  const runSaved = (s: SavedSearch) => {
-    go('search');
-    const next = s.steps.map(cloneFilters);
-    setSteps(next);
-    setEditIndex(next.length - 1);
-    replaceDraft(emptyFilters());
-    setView('results');
-    setVisible(PAGE);
-    flashLoading();
-    top();
-  };
-
-  const openSave = (stepsToSave: Filters[]) =>
-    setSaveDialog({ steps: stepsToSave.map(cloneFilters), suggested: suggestName(stepsToSave, t) });
-
-  const saveFromPanel = () => openSave([...steps.slice(0, editIndex), draft]);
-  const saveFromResults = () => openSave(steps);
+  const hasDraft = encodeFilters(draft) !== '';
+  const openSave = useCallback(() => {
+    const { draft, steps } = latest.current;
+    // An empty draft after locked steps adds nothing to save.
+    const list = (steps.length && !encodeFilters(draft) ? steps : [...steps, draft]).map(cloneFilters);
+    setSaveDialog({ steps: list, suggested: suggestName(list, t) });
+  }, [t]);
 
   const confirmSave = (name: string) => {
     if (!saveDialog) return;
@@ -207,143 +184,113 @@ export default function App() {
     setSaveDialog(null);
   };
 
-  // ---------- trail ----------
+  const onSort = useCallback((s: SortKey) => setSort(s), []);
+  const closeCv = useCallback(() => setCv(null), []);
+  const deleteSaved = useCallback((id: string) => setSaved((list) => list.filter((s) => s.id !== id)), []);
 
-  const trailItems: TrailItem[] = [{ label: t.allCandidates, count: CANDIDATES.length, current: false, onClick: () => jumpTo(0) }];
-  if (view === 'results') {
-    steps.forEach((_, i) =>
-      trailItems.push({
-        label: t.searchN(i + 1),
-        count: stepResults[i + 1].length,
-        current: i === steps.length - 1,
-        onClick: () => jumpTo(i + 1),
-      }),
+  // ---------- trail: All candidates › Search 1 › Search 2 (current) ----------
+
+  const trail = useMemo(() => {
+    const items: TrailItem[] = [{ label: t.allCandidates, count: CANDIDATES.length, current: false, onClick: () => jumpTo(-1) }];
+    steps.forEach((_, i) => items.push({ label: t.searchN(i + 1), count: stepResults[i + 1].length, current: false, onClick: () => jumpTo(i) }));
+    items.push({ label: t.searchN(steps.length + 1), count: results.length, current: true });
+    return <Trail items={items} />;
+  }, [t, steps, stepResults, results.length, jumpTo]);
+
+  const ofLine = steps.length ? t.ofInSearch(fmtNum(base.length), steps.length) : t.ofDatabase(fmtNum(CANDIDATES.length));
+  const resultKey = `${steps.length}|${encodeFilters(liveDraft)}|${sort}`;
+  const canSearchWithin = hasDraft && results.length > 0;
+
+  const filterPanel = (
+    <FilterPanel
+      filters={draft}
+      onChange={patchDraft}
+      onJdFill={fillDraft}
+      showGender={settings.showGender}
+      showJdFill={settings.showJdFill}
+    />
+  );
+
+  if (route !== 'search') {
+    return (
+      <div className="studio-bg flex min-h-screen flex-col text-ink">
+        <TopBar route={route} saved={saved} onRunSaved={runSaved} onDeleteSaved={deleteSaved} />
+        <main className="mx-auto w-full max-w-[1300px] flex-1 px-4 pt-5 pb-12 sm:pt-8 md:px-8">
+          <Suspense fallback={<div className="skeleton h-64" />}>
+            {route === 'admin' ? (
+              <AdminPage
+                settings={settings}
+                onSettings={(p) => setSettings((s) => ({ ...s, ...p }))}
+                conversionsCount={conversions.length}
+                onResetOthers={() => {
+                  clearStoredSaved();
+                  clearStoredConversions();
+                  setSaved(loadSaved());
+                  setConversions(loadConversions());
+                  setSettings(DEFAULT_SETTINGS);
+                }}
+              />
+            ) : route === 'upload' ? (
+              <UploadPage onConverted={addConversion} onOpenDashboard={() => go('dashboard')} />
+            ) : (
+              <DashboardPage
+                list={conversions}
+                onDelete={(id) => setConversions((list) => list.filter((c) => c.id !== id))}
+                onRestore={(c) => setConversions((list) => [...list, c].sort((a, b) => b.id - a.id).slice(0, KEEP_LAST))}
+                onUpload={() => go('upload')}
+              />
+            )}
+          </Suspense>
+        </main>
+        <footer className="mx-auto w-full max-w-[1300px] px-4 pt-2 pb-8 text-[12px] text-muted md:px-8">{t.footer}</footer>
+      </div>
     );
-  } else {
-    for (let i = 0; i < editIndex; i++)
-      trailItems.push({ label: t.searchN(i + 1), count: stepResults[i + 1].length, current: false, onClick: () => jumpTo(i + 1) });
-    trailItems.push({ label: t.searchN(editIndex + 1), current: true });
   }
 
-  const showTrailOnPanel = steps.length > 0;
-  /** Only the search panel has the fixed count bar on phones, which needs room at the bottom. */
-  const searchPanel = route === 'search' && view === 'panel';
-
+  // Resume Finder: one screen. Top bar; filter sidebar and results side by side, each scrolling on its own.
   return (
-    <div className={`flex min-h-screen flex-col text-ink ${route === 'search' ? 'bg-page' : 'studio-bg'}`}>
-      <TopBar
-        route={route}
-        saved={saved}
-        onRunSaved={runSaved}
-        onDeleteSaved={(id) => setSaved((list) => list.filter((s) => s.id !== id))}
-      />
+    <div className="one-screen flex h-dvh flex-col overflow-hidden bg-page text-ink">
+      <TopBar route={route} saved={saved} onRunSaved={runSaved} onDeleteSaved={deleteSaved} />
 
-      <main
-        className={`mx-auto w-full flex-1 px-4 pt-5 sm:pt-8 md:px-8 ${route === 'search' ? 'max-w-[1600px] lg:px-10' : 'max-w-[1300px]'} ${searchPanel ? 'pb-24 lg:pb-12' : 'pb-12'}`}
-      >
-        {route === 'admin' ? (
-          <AdminPage
-            settings={settings}
-            onSettings={(p) => setSettings((s) => ({ ...s, ...p }))}
-            conversionsCount={conversions.length}
-            onResetOthers={() => {
-              clearStoredSaved();
-              clearStoredConversions();
-              setSaved(loadSaved());
-              setConversions(loadConversions());
-              setSettings(DEFAULT_SETTINGS);
-            }}
-          />
-        ) : route === 'upload' ? (
-          <UploadPage onConverted={addConversion} onOpenDashboard={() => go('dashboard')} />
-        ) : route === 'dashboard' ? (
-          <DashboardPage
-            list={conversions}
-            onDelete={(id) => setConversions((list) => list.filter((c) => c.id !== id))}
-            onRestore={(c) => setConversions((list) => [...list, c].sort((a, b) => b.id - a.id).slice(0, KEEP_LAST))}
-            onUpload={() => go('upload')}
-          />
-        ) : view === 'panel' ? (
-          <>
-            <div className="flex items-end justify-between gap-4">
-              <h1 className="text-[26px] leading-tight font-bold tracking-[-0.02em] sm:text-[32px]">{t.pageTitle}</h1>
-              {/* On phones the bottom bar has no room for this, so it sits by the title. */}
-              <button
-                type="button"
-                onClick={() => replaceDraft(emptyFilters())}
-                className="mb-1 flex-none text-[13px] underline underline-offset-2 lg:hidden"
-              >
-                {t.clearAll}
-              </button>
-            </div>
-            <p className="mt-1 text-[14px] text-muted">{t.pageSub}</p>
-
-            {showTrailOnPanel && (
-              <div className="mt-5">
-                <Trail items={trailItems} />
-                <p className="mt-3 text-[13px]">
-                  {editIndex > 0 ? t.searchingWithin(base.length, editIndex) : t.editingSearch(editIndex + 1)}{' '}
-                  <button type="button" onClick={backToResults} className="underline underline-offset-2">
-                    {t.backToResults}
-                  </button>
-                </p>
-              </div>
-            )}
-
-            <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-              <FilterPanel
-                filters={draft}
-                onChange={patchDraft}
-                onReplace={replaceDraft}
-                onClear={() => replaceDraft(emptyFilters())}
-                onJdFill={(p) => replaceDraft({ ...draft, ...p })}
-                jdOpen={jdOpen}
-                onJdToggle={() => setJdOpen((o) => !o)}
-                showGender={settings.showGender}
-                showJdFill={settings.showJdFill}
-              />
-              <CountRail
-                count={draftCount}
-                baseCount={base.length}
-                within={editIndex > 0}
-                onShow={showResults}
-                onSave={saveFromPanel}
-                onClear={() => replaceDraft(emptyFilters())}
-              />
-            </div>
-          </>
-        ) : (
-          <ResultsList
-            steps={effectiveSteps}
-            results={sorted}
-            visible={visible}
-            sort={sort}
-            trail={<Trail items={trailItems} />}
-            loading={loading}
-            onSort={(s) => {
-              setSort(s);
-              setVisible(PAGE);
-            }}
-            onMore={() => setVisible((v) => v + PAGE)}
-            onOpenCv={setCv}
-            onSearchWithin={searchWithin}
-            onSave={saveFromResults}
-            onEdit={editFilters}
-            onNewSearch={newSearch}
-          />
+      <main className="flex min-h-0 flex-1">
+        {desktop && (
+          <aside aria-label={t.filtersLabel} className="w-[380px] flex-none overflow-y-auto overscroll-contain border-r border-line px-3 py-5">
+            <h1 className="mb-3 px-1 text-[20px] leading-tight font-bold tracking-[-0.02em]">{t.pageTitle}</h1>
+            {filterPanel}
+          </aside>
         )}
+        <div className="min-w-0 flex-1">
+          <ResultsPane
+            results={sorted}
+            resultKey={resultKey}
+            ofLine={ofLine}
+            trail={trail}
+            filters={liveDraft}
+            sort={sort}
+            canSearchWithin={canSearchWithin}
+            onRemoveChip={removeChip}
+            onSort={onSort}
+            onSearchWithin={searchWithin}
+            onSave={openSave}
+            onClear={clearDraft}
+            onOpenCv={setCv}
+          />
+        </div>
       </main>
 
-      <footer
-        className={`mx-auto w-full px-4 pt-2 text-[12px] text-muted md:px-8 ${route === 'search' ? 'max-w-[1600px] lg:px-10' : 'max-w-[1300px]'} ${searchPanel ? 'pb-28 lg:pb-8' : 'pb-8'}`}
-      >
-        {t.footer}
-      </footer>
-
-      {cv && <CvModal c={cv} onClose={() => setCv(null)} />}
-      {saveDialog && (
-        <SaveSearchModal suggested={saveDialog.suggested} onCancel={() => setSaveDialog(null)} onSave={confirmSave} />
+      {!desktop && <MobileBar count={results.length} active={countActiveFilters(draft, t)} onOpen={() => setSheetOpen(true)} />}
+      {!desktop && sheetOpen && (
+        <FilterSheet count={results.length} onClose={() => setSheetOpen(false)} onClear={clearDraft}>
+          {filterPanel}
+        </FilterSheet>
       )}
+
+      {cv && (
+        <Suspense fallback={null}>
+          <CvDrawer c={cv} onClose={closeCv} />
+        </Suspense>
+      )}
+      {saveDialog && <SaveSearchModal suggested={saveDialog.suggested} onCancel={() => setSaveDialog(null)} onSave={confirmSave} />}
     </div>
   );
 }
