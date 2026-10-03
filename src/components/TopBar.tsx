@@ -42,7 +42,7 @@ export const TopBar = memo(function TopBar({
 
   return (
     <header className="sticky top-0 z-30 flex-none border-b border-topbar-border bg-topbar text-white">
-      <div className="flex h-14 items-center gap-4 px-4 lg:gap-7 lg:px-6">
+      <div className="flex h-12 items-center gap-4 px-4 lg:gap-7 lg:px-6">
         <a
           href={hrefFor('search')}
           aria-label={t.homeLabel}

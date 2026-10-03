@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { HelpDialog, OpenSavedDialog, Toast, type HelpTopic } from './components/Dialogs';
 import { FilterPanel } from './components/FilterPanel';
+import { FitToScreen } from './components/FitToScreen';
 import { JdButton } from './components/JdButton';
 import { MenuBar, type Menu } from './components/MenuBar';
 import { FilterSheet, MobileBar } from './components/MobileFilters';
@@ -451,7 +452,7 @@ export default function App() {
 
       {!onResults ? (
         desktop ? (
-          <main className="flex min-h-0 flex-1 gap-4 px-4 py-3 lg:px-5">
+          <main className="flex min-h-0 flex-1 gap-4 px-4 py-2.5 lg:px-5">
             <aside aria-label={t.filtersLabel} className="w-[260px] flex-none">
               <SearchSide
                 count={results.length}
@@ -467,8 +468,8 @@ export default function App() {
                 onShowAllSaved={() => setOpenSavedDialog(true)}
               />
             </aside>
-            {/* Sized to fit at 1440x900 and up; on shorter screens (or Comfortable) this area scrolls instead of the page. */}
-            <div className="min-w-0 flex-1 overflow-y-auto overscroll-contain">{zones}</div>
+            {/* Fits at 1440x900 as is; on shorter screens it scales down slightly to fit instead of scrolling. */}
+            <FitToScreen className="min-w-0 flex-1">{zones}</FitToScreen>
           </main>
         ) : (
           <>
@@ -531,7 +532,7 @@ export default function App() {
               onClear={clearDraft}
               action={settings.showJdFill ? <JdButton onFill={fillDraft} /> : null}
             >
-              <FilterPanel filters={draft} onChange={patchDraft} onJdFill={fillDraft} showGender={settings.showGender} showJdFill={false} heading={false} />
+              <FilterPanel filters={draft} onChange={patchDraft} onJdFill={fillDraft} showGender={settings.showGender} showJdFill={false} heading={false} fitMin={0.9} />
             </FilterSheet>
           )}
         </>

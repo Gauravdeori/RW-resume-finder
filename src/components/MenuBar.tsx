@@ -98,7 +98,7 @@ export const MenuBar = memo(function MenuBar({ menus, label }: { menus: Menu[]; 
 
   items.current = [];
   return (
-    <div ref={wrap} role="menubar" aria-label={label} className="flex h-8 flex-none items-center gap-0.5 border-b border-line bg-card px-2 lg:px-4">
+    <div ref={wrap} role="menubar" aria-label={label} className="flex h-7 flex-none items-center gap-0.5 border-b border-line bg-card px-2 lg:px-4">
       {menus.map((m, i) => (
         <div key={m.label} className="relative">
           <button
@@ -113,7 +113,7 @@ export const MenuBar = memo(function MenuBar({ menus, label }: { menus: Menu[]; 
             onClick={() => (open === i ? setOpen(null) : openMenu(i, null))}
             onMouseEnter={() => open !== null && open !== i && openMenu(i, null)}
             onKeyDown={onTitleKey(i)}
-            className={cx('h-7 rounded px-2.5 text-[12.5px]', open === i ? 'bg-pick font-semibold text-pick-ink' : 'text-ink hover:bg-tile')}
+            className={cx('h-6 rounded px-2.5 text-[12.5px]', open === i ? 'bg-pick font-semibold text-pick-ink' : 'text-ink hover:bg-tile')}
           >
             {m.label}
           </button>

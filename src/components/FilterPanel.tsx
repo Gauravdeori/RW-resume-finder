@@ -14,6 +14,7 @@ import {
 } from '../lib/types';
 import { AgeFilter } from './AgeFilter';
 import { CheckTile, FilterRow, TextField, Toggle, cx, toggleIn } from './controls';
+import { FitToScreen } from './FitToScreen';
 import { JdButton } from './JdButton';
 
 const GENDERS = ['male', 'female'] as const;
@@ -372,11 +373,11 @@ function Zone({ title, count, children }: { title: string; count: number; childr
   const id = useId();
   return (
     <section aria-labelledby={id} className="rounded-xl border border-line bg-card shadow-card">
-      <h2 id={id} className="flex items-center gap-2 px-3.5 pt-2.5 text-[11.5px] font-semibold tracking-[0.08em] text-muted uppercase">
+      <h2 id={id} className="flex items-center gap-2 px-3.5 pt-2 text-[11.5px] leading-[16px] font-semibold tracking-[0.08em] text-muted uppercase">
         {title}
         <CountBadge n={count} />
       </h2>
-      <div className="divide-y divide-line px-3.5 pb-1">{children}</div>
+      <div className="divide-y divide-line px-3.5 pb-0.5">{children}</div>
     </section>
   );
 }
@@ -455,6 +456,7 @@ export const FilterPanel = memo(function FilterPanel({
   heading = true,
   layout = 'tabs',
   onAllFilters,
+  fitMin = 0.72,
 }: {
   filters: Filters;
   onChange: Patch;
@@ -467,6 +469,8 @@ export const FilterPanel = memo(function FilterPanel({
   layout?: 'tabs' | 'zones';
   /** Tabs layout: go back to the full-screen search. */
   onAllFilters?: () => void;
+  /** Tabs layout: the smallest scale used to fit a short screen (phones keep text larger and scroll instead). */
+  fitMin?: number;
 }) {
   const { t } = useI18n();
   const [tab, setTab] = useState<SectionKey>('basics');
@@ -524,14 +528,13 @@ export const FilterPanel = memo(function FilterPanel({
       )}
       <Tabs current={tab} counts={counts} onSelect={setTab} idFor={idFor} />
       <h2 className="sr-only">{t.sections[tab]}</h2>
-      {/* Each group is sized to fit; only on very short screens can this one area scroll, as a fallback. */}
-      <div
-        role="tabpanel"
-        id={idFor(tab, 'panel')}
-        aria-labelledby={idFor(tab, 'tab')}
-        className="min-h-0 flex-1 divide-y divide-line overflow-y-auto overscroll-contain px-4"
-      >
-        <GroupRows group={tab} f={f} onChange={onChange} showGender={showGender} />
+      {/* Each group is sized to fit; on short screens it scales down slightly instead of scrolling. */}
+      <div role="tabpanel" id={idFor(tab, 'panel')} aria-labelledby={idFor(tab, 'tab')} className="flex min-h-0 flex-1 flex-col">
+        <FitToScreen className="flex-1 px-4" min={fitMin}>
+          <div className="divide-y divide-line">
+            <GroupRows group={tab} f={f} onChange={onChange} showGender={showGender} />
+          </div>
+        </FitToScreen>
       </div>
     </div>
   );

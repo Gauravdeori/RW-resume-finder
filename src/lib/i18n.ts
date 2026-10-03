@@ -117,7 +117,7 @@ const en = {
   gaishiSub: 'Fit for foreign-affiliated companies',
   gaishiScore: 'Gaishi score',
   gaishiHelp: 'A is the strongest. Built from English level, foreign-company experience and time overseas.',
-  foreignLabel: 'Worked at a foreign company',
+  foreignLabel: 'Foreign company',
   foreign: { any: 'Any', never: 'Never', once: 'At least once', twice: 'Twice or more' } as Record<ForeignFilter, string>,
   englishAtLeast: 'English, at least',
   japaneseAtLeast: 'Japanese, at least',

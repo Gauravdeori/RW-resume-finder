@@ -100,7 +100,7 @@ export function TextField({
   const id = useId();
   return (
     <div className={cx('min-w-0', className)}>
-      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'mb-0.5 block text-[11.5px] leading-tight text-muted'}>
+      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'mb-0.5 block text-[11.5px] leading-[13px] text-muted'}>
         {label}
       </label>
       <div className="flex">

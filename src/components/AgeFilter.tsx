@@ -75,7 +75,7 @@ function RangeSlider({ lo, hi, active, onChange }: { lo: number; hi: number; act
       onPointerMove={(e) => drag.current && move(drag.current, e.clientX)}
       onPointerUp={() => (drag.current = null)}
       onPointerCancel={() => (drag.current = null)}
-      className="relative h-5 touch-none select-none"
+      className="relative h-4 touch-none select-none"
       data-age-track
     >
       <div aria-hidden className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-line" />
@@ -110,7 +110,7 @@ function AgeBox({ value, label, accept, onCommit }: { value: number; label: stri
       }}
       onBlur={() => setEditing(null)}
       onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-      className="tabular h-8 w-11 rounded border border-line bg-field text-center text-[16px] text-ink outline-none hover:border-accent/50 focus:border-accent sm:text-[13.5px]"
+      className="tabular h-7 w-11 rounded border border-line bg-field text-center text-[16px] text-ink outline-none hover:border-accent/50 focus:border-accent sm:text-[13.5px]"
     />
   );
 }
@@ -145,7 +145,7 @@ export function AgeFilter({ filters, onChange }: { filters: AgeFields; onChange:
   };
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <div role="group" aria-label={t.rowAge} className="grid grid-cols-5">
         {DECADES.map((d, i) => {
           const on = lit.includes(d);

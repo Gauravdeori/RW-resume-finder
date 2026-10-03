@@ -142,7 +142,7 @@
  */
 :root {
   --ctl-h: 36px;
-  --row-py: 6px;
+  --row-py: 4px;
   --label-w: 80px;
 }
 :root:lang(ja) {
