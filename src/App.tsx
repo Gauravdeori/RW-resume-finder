@@ -4,6 +4,7 @@ import { AdminPage } from './components/AdminPage';
 import { CvModal } from './components/CvModal';
 import { DashboardPage } from './components/DashboardPage';
 import { FilterPanel } from './components/FilterPanel';
+import { JdToggle } from './components/JdPanel';
 import { ResultsList } from './components/ResultsList';
 import { SaveSearchModal } from './components/SaveSearchModal';
 import { TopBar } from './components/TopBar';
@@ -86,6 +87,7 @@ export default function App() {
   const [sort, setSort] = useState<SortKey>('best');
   const [visible, setVisible] = useState(PAGE);
   const [cv, setCv] = useState<Candidate | null>(null);
+  const [jdOpen, setJdOpen] = useState(false);
   const [saveDialog, setSaveDialog] = useState<null | { steps: Filters[]; suggested: string }>(null);
   const [saved, setSaved] = useState<SavedSearch[]>(loadSaved);
 
@@ -222,7 +224,7 @@ export default function App() {
       />
 
       <main
-        className={`mx-auto w-full flex-1 px-4 pt-5 sm:pt-8 md:px-8 ${route === 'search' ? 'max-w-[1200px]' : 'max-w-[1300px]'} ${searchPanel ? 'pb-24 lg:pb-12' : 'pb-12'}`}
+        className={`mx-auto w-full flex-1 px-4 pt-5 sm:pt-8 md:px-8 ${route === 'search' ? 'max-w-[1760px] lg:px-6 lg:pt-3' : 'max-w-[1300px]'} ${searchPanel ? 'pb-24 lg:pb-3' : 'pb-12'}`}
       >
         {route === 'admin' ? (
           <AdminPage
@@ -248,8 +250,12 @@ export default function App() {
           />
         ) : view === 'panel' ? (
           <>
-            <div className="flex items-end justify-between gap-4">
-              <h1 className="text-[26px] leading-tight font-extrabold tracking-tight sm:text-[32px]">{t.pageTitle}</h1>
+            <div className="flex items-end justify-between gap-4 lg:justify-start lg:gap-4">
+              <h1 className="text-[26px] leading-tight font-extrabold tracking-tight sm:text-[32px] lg:text-[22px]">{t.pageTitle}</h1>
+              <p className="mb-[3px] hidden text-[12.5px] text-muted lg:block">{t.pageSub}</p>
+              {settings.showJdFill && (
+                <JdToggle open={jdOpen} onToggle={() => setJdOpen((o) => !o)} className="hidden lg:ml-auto lg:flex" />
+              )}
               {/* On phones the bottom bar has no room for this, so it sits by the title. */}
               <button
                 type="button"
@@ -259,12 +265,12 @@ export default function App() {
                 {t.clearAll}
               </button>
             </div>
-            <p className="mt-1 text-[13px] text-muted">{t.pageSub}</p>
+            <p className="mt-1 text-[13px] text-muted lg:hidden">{t.pageSub}</p>
 
             {showTrailOnPanel && (
-              <div className="mt-5">
+              <div className="mt-5 lg:mt-2 lg:flex lg:flex-wrap lg:items-center lg:gap-x-4 lg:gap-y-1">
                 <Trail items={trailItems} />
-                <p className="mt-3 text-[13px]">
+                <p className="mt-3 text-[13px] lg:mt-0 lg:text-[12.5px]">
                   {editIndex > 0 ? t.searchingWithin(base.length, editIndex) : t.editingSearch(editIndex + 1)}{' '}
                   <button type="button" onClick={backToResults} className="underline underline-offset-2">
                     {t.backToResults}
@@ -273,11 +279,13 @@ export default function App() {
               </div>
             )}
 
-            <div className="mt-5 grid items-start sm:mt-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="mt-5 grid items-start sm:mt-6 lg:mt-2 lg:grid-cols-[minmax(0,1fr)_216px] xl:grid-cols-[minmax(0,1fr)_260px]">
               <FilterPanel
                 filters={draft}
                 onChange={patchDraft}
                 onJdFill={(p) => replaceDraft({ ...draft, ...p })}
+                jdOpen={jdOpen}
+                onJdToggle={() => setJdOpen((o) => !o)}
                 showGender={settings.showGender}
                 showJdFill={settings.showJdFill}
               />
@@ -313,7 +321,7 @@ export default function App() {
       </main>
 
       <footer
-        className={`mx-auto w-full px-4 pt-2 text-[12px] text-muted md:px-8 ${route === 'search' ? 'max-w-[1200px]' : 'max-w-[1300px]'} ${searchPanel ? 'pb-28 lg:pb-8' : 'pb-8'}`}
+        className={`mx-auto w-full px-4 pt-2 text-[12px] text-muted md:px-8 ${route === 'search' ? 'max-w-[1760px] lg:px-6' : 'max-w-[1300px]'} ${searchPanel ? 'pb-28 lg:hidden' : 'pb-8'}`}
       >
         {t.footer}
       </footer>

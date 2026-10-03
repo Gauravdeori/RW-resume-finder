@@ -126,6 +126,13 @@ body {
     height: 36px;
   }
 }
+/* Laptops and desktops with a mouse: compact slider to keep the panel on one screen. */
+@media (min-width: 1024px) and (pointer: fine) {
+  .dual-range {
+    --thumb: 14px;
+    height: 20px;
+  }
+}
 .dual-range input[type='range'] {
   position: absolute;
   inset: 0;

@@ -25,7 +25,7 @@ Deploy: Netlify / Vercel / Render static site with build command `npm run build`
 
 | Feature | Where |
 | --- | --- |
-| Filter panel (no dropdowns), live count, zero state | `components/FilterPanel.tsx`, `CountRail.tsx` |
+| Filter panel (no dropdowns), live count, zero state. On laptops the whole panel fits on one screen (three dense columns, from 1280x600 up) | `components/FilterPanel.tsx`, `CountRail.tsx` |
 | Age: decades + dual slider, last-touched wins | `components/AgeFilter.tsx` |
 | Gaishi score (Aâ€“D) and its parts | `components/GaishiFilter.tsx`, `lib/gaishi.ts` |
 | Results, Best CVs / New CVs, Show 10 more | `components/ResultsList.tsx`, `CandidateRow.tsx` |
