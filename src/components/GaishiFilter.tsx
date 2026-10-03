@@ -22,7 +22,7 @@ export function GaishiFilter({ filters, onChange }: { filters: Filters; onChange
   const single = <T extends string>(current: T, v: T) => (current === v ? ('any' as T) : v);
 
   return (
-    <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-1 lg:gap-y-1">
+    <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-1 lg:gap-y-[0.333em]">
       <div>
         <ToggleGroup label={t.gaishiScore}>
           {GAISHI_SCORES.map((g) => (
@@ -30,13 +30,13 @@ export function GaishiFilter({ filters, onChange }: { filters: Filters; onChange
               key={g}
               on={filters.gaishiScores.includes(g)}
               onClick={() => onChange({ gaishiScores: toggleIn(filters.gaishiScores, g) })}
-              className="w-9 px-0 font-bold lg:w-7 lg:px-0"
+              className="w-9 px-0 font-bold lg:w-[2.333em] lg:px-0"
             >
               {g}
             </Toggle>
           ))}
         </ToggleGroup>
-        <p className="mt-2 text-[12px] leading-snug text-muted lg:mt-0.5 lg:text-[11px]">{t.gaishiHelp}</p>
+        <p className="mt-2 text-[12px] leading-snug text-muted lg:mt-[0.167em] lg:text-[0.917em]">{t.gaishiHelp}</p>
       </div>
       <ToggleGroup label={t.foreignLabel}>
         {FOREIGN.map((o) => (

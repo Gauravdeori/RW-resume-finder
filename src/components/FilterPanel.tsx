@@ -16,12 +16,13 @@ import { JdPanel } from './JdPanel';
 
 const GENDERS: FilterGender[] = ['male', 'female'];
 /** Phones: tiles in a grid. Laptops/desktops: compact chips that wrap. */
-const TILES = 'grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:flex lg:flex-wrap lg:gap-1';
+const TILES = 'grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:flex lg:flex-wrap lg:gap-[0.333em]';
 
 /**
  * Every filter on one page. Buttons and tiles only; no dropdowns.
  * Laptops and desktops: three dense columns so the whole panel fits on one screen without scrolling
- * (reviewer feedback: Japanese recruiters prefer information packed together).
+ * (reviewer feedback: Japanese recruiters prefer information packed together). Sizes there are in em,
+ * so App can scale the panel to fill the screen height exactly (see useFitToScreen).
  * Tablets: two columns. Phones: one column with touch-sized controls.
  */
 export function FilterPanel({
@@ -50,14 +51,14 @@ export function FilterPanel({
   const removePrevious = (i: number) => onChange({ previousCompanies: f.previousCompanies.filter((_, j) => j !== i) });
 
   return (
-    <div aria-label={t.filtersLabel} role="region" className="-mx-4 bg-card px-4 sm:mx-0 sm:px-5 lg:px-4 lg:pb-1">
+    <div aria-label={t.filtersLabel} role="region" className="-mx-4 bg-card px-4 sm:mx-0 sm:px-5 lg:flex lg:flex-col lg:px-[1.333em] lg:pb-[0.333em]">
       {showJdFill && <JdPanel open={jdOpen} onToggle={onJdToggle} onFill={onJdFill} />}
 
-      <div className="grid md:grid-cols-2 md:gap-x-6 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,0.98fr)_minmax(0,1.1fr)] lg:gap-x-4 xl:gap-x-5">
+      <div className="grid md:grid-cols-2 md:gap-x-6 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,0.98fr)_minmax(0,1.1fr)] lg:flex-1 lg:gap-x-[1.5em]">
         {/* Column 1, background: name, company, education */}
-        <div className="min-w-0 lg:[&>section:first-child]:border-t-0">
+        <div className="min-w-0 lg:flex lg:flex-col lg:justify-between lg:[&>section:first-child]:border-t-0">
           <FilterRow label={t.rowName}>
-            <div className="grid grid-cols-2 gap-3 lg:gap-2">
+            <div className="grid grid-cols-2 gap-3 lg:gap-[0.667em]">
               <TextField label={t.lastName} value={f.lastName} onChange={(v) => onChange({ lastName: v })} />
               <TextField label={t.firstName} value={f.firstName} onChange={(v) => onChange({ firstName: v })} />
             </div>
@@ -69,15 +70,15 @@ export function FilterPanel({
               <button
                 type="button"
                 onClick={() => onChange({ previousCompanies: [...f.previousCompanies, ''] })}
-                className="text-right text-[13px] underline underline-offset-2 lg:text-[11.5px]"
+                className="text-right text-[13px] underline underline-offset-2 lg:text-[0.958em]"
               >
                 {t.addPrevious}
               </button>
             }
           >
-            <div className="grid grid-cols-2 gap-3 lg:gap-2">
+            <div className="grid grid-cols-2 gap-3 lg:gap-[0.667em]">
               <TextField label={t.currentCompany} value={f.currentCompany} onChange={(v) => onChange({ currentCompany: v })} />
-              <div className="flex flex-col gap-3 lg:gap-1.5">
+              <div className="flex flex-col gap-3 lg:gap-[0.5em]">
                 {f.previousCompanies.map((p, i) => (
                   <TextField
                     key={i}
@@ -90,7 +91,7 @@ export function FilterPanel({
                           type="button"
                           onClick={() => removePrevious(i)}
                           aria-label={t.removePrevious}
-                          className="h-11 w-10 flex-none border border-l-0 border-control text-[16px] text-muted hover:text-ink sm:h-10 lg:h-8 lg:w-8"
+                          className="h-11 w-10 flex-none border border-l-0 border-control text-[16px] text-muted hover:text-ink sm:h-10 lg:h-[2.667em] lg:w-[2.667em]"
                         >
                           ×
                         </button>
@@ -103,7 +104,7 @@ export function FilterPanel({
           </FilterRow>
 
           <FilterRow label={t.rowEducation}>
-            <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-1 lg:gap-y-1">
+            <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-1 lg:gap-y-[0.333em]">
               <ToggleGroup label={t.degreeLabel}>
                 {DEGREES.map((d) => (
                   <Toggle key={d} on={f.degrees.includes(d)} onClick={() => onChange({ degrees: toggleIn(f.degrees, d) })}>
@@ -117,7 +118,7 @@ export function FilterPanel({
                     key={c}
                     on={f.schoolClasses.includes(c)}
                     onClick={() => onChange({ schoolClasses: toggleIn(f.schoolClasses, c) })}
-                    className={c === 'Overseas' ? undefined : 'w-9 px-0 font-bold lg:w-7 lg:px-0'}
+                    className={c === 'Overseas' ? undefined : 'w-9 px-0 font-bold lg:w-[2.333em] lg:px-0'}
                   >
                     {t.schoolClass[c]}
                   </Toggle>
@@ -136,9 +137,9 @@ export function FilterPanel({
         </div>
 
         {/* Column 2, role: seniority, industry, position */}
-        <div className="min-w-0 lg:[&>section:first-child]:border-t-0">
+        <div className="min-w-0 lg:flex lg:flex-col lg:justify-between lg:[&>section:first-child]:border-t-0">
           <FilterRow label={t.rowSeniority}>
-            <div role="group" aria-label={t.rowSeniority} className="flex flex-wrap gap-2 lg:gap-1">
+            <div role="group" aria-label={t.rowSeniority} className="flex flex-wrap gap-2 lg:gap-[0.333em]">
               {SENIORITIES.map((s) => (
                 <Toggle key={s} on={f.seniority.includes(s)} onClick={() => onChange({ seniority: toggleIn(f.seniority, s) })}>
                   <span className="font-bold">{s}</span>
@@ -176,7 +177,7 @@ export function FilterPanel({
         </div>
 
         {/* Column 3, fit: gaishi, age, gender */}
-        <div className="min-w-0 lg:[&>section:first-child]:border-t-0">
+        <div className="min-w-0 lg:flex lg:flex-col lg:justify-between lg:[&>section:first-child]:border-t-0">
           <FilterRow label={t.rowGaishi} sub={t.gaishiSub}>
             <GaishiFilter filters={f} onChange={onChange} />
           </FilterRow>
@@ -187,7 +188,7 @@ export function FilterPanel({
 
           {showGender && (
             <FilterRow label={t.rowGender}>
-              <div role="group" aria-label={t.rowGender} className="flex flex-wrap gap-2 lg:gap-1">
+              <div role="group" aria-label={t.rowGender} className="flex flex-wrap gap-2 lg:gap-[0.333em]">
                 {GENDERS.map((g) => (
                   <Toggle key={g} on={f.genders.includes(g)} onClick={() => onChange({ genders: toggleIn(f.genders, g) })}>
                     {t.gender[g]}

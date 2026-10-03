@@ -23,7 +23,7 @@ export function Toggle({
       aria-label={label}
       onClick={onClick}
       className={cx(
-        'inline-flex h-10 items-center justify-center gap-1.5 border px-3 text-[13px] leading-none whitespace-nowrap transition-colors sm:h-9 lg:h-7 lg:gap-1 lg:px-2 lg:text-[12px]',
+        'inline-flex h-10 items-center justify-center gap-1.5 border px-3 text-[13px] leading-none whitespace-nowrap transition-colors sm:h-9 lg:h-[2.333em] lg:gap-[0.333em] lg:px-[0.667em] lg:text-[1em]',
         on ? 'border-sel bg-sel text-on-sel' : 'border-control bg-field text-ink hover:border-ink',
         className,
       )}
@@ -42,19 +42,19 @@ export function CheckTile({ on, onClick, label }: { on: boolean; onClick: () => 
       aria-checked={on}
       onClick={onClick}
       className={cx(
-        'flex min-h-[44px] items-center gap-2 border px-2.5 py-1.5 text-left text-[13px] leading-[1.15] transition-colors sm:min-h-[38px] lg:min-h-7 lg:gap-1.5 lg:px-2 lg:py-1 lg:text-[12px]',
+        'flex min-h-[44px] items-center gap-2 border px-2.5 py-1.5 text-left text-[13px] leading-[1.15] transition-colors sm:min-h-[38px] lg:min-h-[2.333em] lg:gap-[0.5em] lg:px-[0.667em] lg:py-[0.333em] lg:text-[1em]',
         on ? 'border-sel bg-sel text-on-sel' : 'border-control bg-field text-ink hover:border-ink',
       )}
     >
       <span
         aria-hidden
         className={cx(
-          'flex h-[14px] w-[14px] flex-none items-center justify-center border lg:h-3 lg:w-3',
+          'flex h-[14px] w-[14px] flex-none items-center justify-center border lg:h-[1em] lg:w-[1em]',
           on ? 'border-on-sel bg-on-sel text-sel' : 'border-muted',
         )}
       >
         {on && (
-          <svg viewBox="0 0 12 12" className="h-[10px] w-[10px] lg:h-2 lg:w-2">
+          <svg viewBox="0 0 12 12" className="h-[10px] w-[10px] lg:h-[0.667em] lg:w-[0.667em]">
             <path d="M2 6.5 4.8 9 10 3" fill="none" stroke="currentColor" strokeWidth="2" />
           </svg>
         )}
@@ -78,7 +78,7 @@ export function TextField({
   const id = useId();
   return (
     <div className="min-w-0">
-      <label htmlFor={id} className="mb-1.5 block text-[12px] text-muted lg:mb-0.5 lg:text-[11.5px]">
+      <label htmlFor={id} className="mb-1.5 block text-[12px] text-muted lg:mb-[0.167em] lg:text-[0.958em]">
         {label}
       </label>
       <div className="flex">
@@ -88,7 +88,7 @@ export function TextField({
           autoComplete="off"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-11 w-full min-w-0 border border-control bg-field px-3 text-[16px] text-ink sm:h-10 sm:text-[14px] lg:h-8 lg:px-2 lg:text-[13px] outline-none focus:border-ink focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent"
+          className="h-11 w-full min-w-0 border border-control bg-field px-3 text-[16px] text-ink sm:h-10 sm:text-[14px] lg:h-[2.667em] lg:px-[0.667em] lg:text-[1.083em] outline-none focus:border-ink focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent"
         />
         {trailing}
       </div>
@@ -114,11 +114,11 @@ export function FilterRow({
 }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className="border-t border-line py-4 sm:py-5 lg:py-2">
-      <div className="mb-3 flex items-baseline justify-between gap-3 lg:mb-1">
-        <h2 id={id} className="text-[14px] leading-tight font-semibold lg:text-[12.5px]">
+    <section aria-labelledby={id} className="border-t border-line py-4 sm:py-5 lg:py-[0.667em]">
+      <div className="mb-3 flex items-baseline justify-between gap-3 lg:mb-[0.333em]">
+        <h2 id={id} className="text-[14px] leading-tight font-semibold lg:text-[1.042em]">
           {label}
-          {sub && <span className="ml-2 text-[12px] font-normal text-muted lg:text-[11px]">{sub}</span>}
+          {sub && <span className="ml-2 text-[12px] font-normal text-muted lg:text-[0.917em]">{sub}</span>}
         </h2>
         {action}
       </div>
@@ -130,7 +130,7 @@ export function FilterRow({
 /** Small grey label above a group of buttons inside a section. */
 export function GroupLabel({ children, id }: { children: ReactNode; id?: string }) {
   return (
-    <div id={id} className="mb-2 text-[12px] text-muted lg:mb-0.5 lg:text-[11px] lg:leading-tight">
+    <div id={id} className="mb-2 text-[12px] text-muted lg:mb-[0.167em] lg:text-[0.917em] lg:leading-tight">
       {children}
     </div>
   );
@@ -142,7 +142,7 @@ export function ToggleGroup({ label, children, className }: { label: string; chi
   return (
     <div role="group" aria-labelledby={id} className={className}>
       <GroupLabel id={id}>{label}</GroupLabel>
-      <div className="flex flex-wrap gap-2 lg:gap-1">{children}</div>
+      <div className="flex flex-wrap gap-2 lg:gap-[0.333em]">{children}</div>
     </div>
   );
 }

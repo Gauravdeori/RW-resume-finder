@@ -40,7 +40,7 @@ export function TopBar({
 
   return (
     <header className="border-b border-topbar-border bg-topbar text-white">
-      <div className="mx-auto flex h-14 max-w-[1760px] items-center gap-4 px-4 md:px-8 lg:h-12 lg:gap-7 lg:px-6">
+      <div className="mx-auto flex h-14 max-w-none items-center gap-4 px-4 md:px-8 lg:h-12 lg:gap-7 lg:px-6">
         <a
           href={hrefFor('search')}
           aria-label={t.homeLabel}

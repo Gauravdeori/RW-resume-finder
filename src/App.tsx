@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CountRail } from './components/CountRail';
 import { AdminPage } from './components/AdminPage';
 import { CvModal } from './components/CvModal';
@@ -60,8 +60,73 @@ function useLiveFilters(f: Filters, version: number): Filters {
 
 type View = 'panel' | 'results';
 
+/** Base size of the laptop filter panel; every laptop size in the panel is a multiple of it (em). */
+const FIT_MIN_PX = 12;
+const FIT_MAX_PX = 28;
+const FIT_BOTTOM_GAP = 12;
+
+/**
+ * Laptops and desktops: scale the filter panel so it fills the screen exactly, with no blank space
+ * below and no scrolling. Finds the largest base size at which the panel still fits (binary search),
+ * then stretches the card to the bottom edge. Phones and tablets are left alone.
+ */
+function useFitToScreen(active: boolean, deps: unknown[]) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const box = ref.current;
+    if (!box) return;
+    const card = box.querySelector<HTMLElement>('[role=region]');
+    if (!card) return;
+
+    const reset = () => {
+      box.style.fontSize = '';
+      card.style.minHeight = '';
+    };
+    const fit = () => {
+      reset();
+      if (!active || !window.matchMedia('(min-width: 1024px)').matches) return;
+      const limit = window.innerHeight - FIT_BOTTOM_GAP;
+      const bottom = () => Math.max(...[...box.children].map((c) => c.getBoundingClientRect().bottom)) + window.scrollY;
+      const fits = (px: number) => {
+        box.style.fontSize = `${px}px`;
+        return bottom() <= limit;
+      };
+      let lo = FIT_MIN_PX;
+      let hi = FIT_MAX_PX;
+      if (fits(hi)) lo = hi;
+      else if (fits(lo)) {
+        for (let i = 0; i < 9; i++) {
+          const mid = (lo + hi) / 2;
+          if (fits(mid)) lo = mid;
+          else hi = mid;
+        }
+      }
+      box.style.fontSize = `${lo}px`;
+      // Fill any remainder (wrapping moves in steps) so the card reaches the bottom edge.
+      const top = card.getBoundingClientRect().top + window.scrollY;
+      if (limit - top > card.offsetHeight) card.style.minHeight = `${limit - top}px`;
+    };
+
+    fit();
+    let frame = 0;
+    const onResize = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    };
+    window.addEventListener('resize', onResize);
+    // The web font changes text widths once it loads; fit again then.
+    document.fonts?.ready.then(onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      cancelAnimationFrame(frame);
+      reset();
+    };
+  }, [active, ...deps]);
+  return ref;
+}
+
 export default function App() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   // Upload Resume, Dashboard and Search are separate pages; search state is kept while you move between them.
   const [route, go] = useHashRoute();
 
@@ -213,6 +278,16 @@ export default function App() {
   const showTrailOnPanel = steps.length > 0;
   /** Only the search panel has the fixed count bar on phones, which needs room at the bottom. */
   const searchPanel = route === 'search' && view === 'panel';
+  // With the job description open the panel is taller than the screen by design, so it is not scaled.
+  const fitRef = useFitToScreen(searchPanel && !jdOpen, [
+    lang,
+    settings.showGender,
+    settings.showJdFill,
+    draft.previousCompanies.length,
+    draftCount === 0,
+    editIndex,
+    steps.length,
+  ]);
 
   return (
     <div className={`flex min-h-screen flex-col text-ink ${route === 'search' ? 'bg-page' : 'studio-bg'}`}>
@@ -224,7 +299,7 @@ export default function App() {
       />
 
       <main
-        className={`mx-auto w-full flex-1 px-4 pt-5 sm:pt-8 md:px-8 ${route === 'search' ? 'max-w-[1760px] lg:px-6 lg:pt-3' : 'max-w-[1300px]'} ${searchPanel ? 'pb-24 lg:pb-3' : 'pb-12'}`}
+        className={`mx-auto w-full flex-1 px-4 pt-5 sm:pt-8 md:px-8 ${route === 'search' ? 'max-w-none lg:px-6 lg:pt-3' : 'max-w-[1300px]'} ${searchPanel ? 'pb-24 lg:pb-3' : 'pb-12'}`}
       >
         {route === 'admin' ? (
           <AdminPage
@@ -279,7 +354,7 @@ export default function App() {
               </div>
             )}
 
-            <div className="mt-5 grid items-start sm:mt-6 lg:mt-2 lg:grid-cols-[minmax(0,1fr)_216px] xl:grid-cols-[minmax(0,1fr)_260px]">
+            <div ref={fitRef} className="mt-5 grid items-start sm:mt-6 lg:mt-2 lg:grid-cols-[minmax(0,1fr)_18em] lg:text-[12px]">
               <FilterPanel
                 filters={draft}
                 onChange={patchDraft}
@@ -321,7 +396,7 @@ export default function App() {
       </main>
 
       <footer
-        className={`mx-auto w-full px-4 pt-2 text-[12px] text-muted md:px-8 ${route === 'search' ? 'max-w-[1760px] lg:px-6' : 'max-w-[1300px]'} ${searchPanel ? 'pb-28 lg:hidden' : 'pb-8'}`}
+        className={`mx-auto w-full px-4 pt-2 text-[12px] text-muted md:px-8 ${route === 'search' ? 'max-w-none lg:px-6' : 'max-w-[1300px]'} ${searchPanel ? 'pb-28 lg:hidden' : 'pb-8'}`}
       >
         {t.footer}
       </footer>

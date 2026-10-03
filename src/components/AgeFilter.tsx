@@ -42,7 +42,7 @@ export function AgeFilter({ filters, onChange }: { filters: Filters; onChange: (
 
   return (
     <div>
-      <div role="group" aria-label={t.rowAge} className="flex flex-wrap gap-2 lg:gap-1">
+      <div role="group" aria-label={t.rowAge} className="flex flex-wrap gap-2 lg:gap-[0.333em]">
         {DECADES.map((d) => (
           <Toggle key={d} on={lit.includes(d)} onClick={() => toggleDecade(d)}>
             {t.decade(d)}
@@ -51,8 +51,8 @@ export function AgeFilter({ filters, onChange }: { filters: Filters; onChange: (
       </div>
 
       {/* lg: slider and caption share one line */}
-      <div className="mt-4 lg:mt-1.5 lg:flex lg:items-center lg:gap-3">
-      <div className="dual-range max-w-[300px] lg:w-[220px] lg:flex-none">
+      <div className="mt-4 lg:mt-[0.5em] lg:flex lg:items-center lg:gap-[1em]">
+      <div className="dual-range max-w-[300px] lg:w-[18em] lg:flex-none">
         <div aria-hidden className="absolute top-1/2 h-[2px] -translate-y-1/2 bg-line" style={{ left: 'calc(var(--thumb) / 2)', right: 'calc(var(--thumb) / 2)' }} />
         <div
           aria-hidden
@@ -82,7 +82,7 @@ export function AgeFilter({ filters, onChange }: { filters: Filters; onChange: (
           style={{ zIndex: 3 }}
         />
       </div>
-      <p className="mt-2 text-[13px] text-muted lg:mt-0 lg:text-[12px]" aria-live="polite">
+      <p className="mt-2 text-[13px] text-muted lg:mt-0 lg:text-[1em]" aria-live="polite">
         {ageCaption(filters, t)}
       </p>
       </div>

@@ -17,33 +17,34 @@ export function CountRail({ count, baseCount, within, onShow, onSave, onClear }:
 
   return (
     <>
-      <aside className="hidden lg:sticky lg:top-3 lg:block lg:pl-4">
-        <div className="bg-accent px-4 pt-2 pb-3" aria-live="polite" aria-atomic="true">
-          <div className="text-[46px] leading-[1.05] font-extrabold tracking-tight text-white">{fmtNum(count)}</div>
-          <div className="mt-1 text-[13px] font-bold text-on-accent">{t.countMatch}</div>
-          <div className="text-[12px] text-on-accent">{of}</div>
+      {/* Sizes in em: the rail scales with the filter panel to fill the screen (see useFitToScreen). */}
+      <aside className="hidden lg:sticky lg:top-3 lg:block lg:pl-[1.333em]">
+        <div className="bg-accent px-[1.333em] pt-[0.667em] pb-[1em]" aria-live="polite" aria-atomic="true">
+          <div className="text-[3.833em] leading-[1.05] font-extrabold tracking-tight text-white">{fmtNum(count)}</div>
+          <div className="mt-[0.333em] text-[1.083em] font-bold text-on-accent">{t.countMatch}</div>
+          <div className="text-[1em] text-on-accent">{of}</div>
         </div>
         <button
           type="button"
           onClick={onShow}
           disabled={empty}
-          className="mt-2 h-9 w-full bg-accent text-[14px] font-bold text-on-accent hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-45"
+          className="mt-[0.667em] h-[3em] w-full bg-accent text-[1.167em] font-bold text-on-accent hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-45"
         >
           {t.showN(count)}
         </button>
         {empty && (
-          <p role="status" className="mt-2 text-[13px] leading-snug">
+          <p role="status" className="mt-[0.667em] text-[1.083em] leading-snug">
             {t.zero}
           </p>
         )}
-        <button type="button" onClick={onSave} className="mt-2 h-9 w-full border border-ink text-[13px] hover:bg-sel hover:text-on-sel">
+        <button type="button" onClick={onSave} className="mt-[0.667em] h-[3em] w-full border border-ink text-[1.083em] hover:bg-sel hover:text-on-sel">
           {t.saveSearch}
         </button>
-        <button type="button" onClick={onClear} className="mt-2 text-[12.5px] underline underline-offset-2">
+        <button type="button" onClick={onClear} className="mt-[0.667em] text-[1.042em] underline underline-offset-2">
           {t.clearAll}
         </button>
         {/* On laptops the page footer is hidden to keep everything on one screen; the note lives here instead. */}
-        <p className="mt-6 text-[11px] leading-snug text-muted">{t.footer}</p>
+        <p className="mt-[2em] text-[0.917em] leading-snug text-muted">{t.footer}</p>
       </aside>
 
       {/* Phones and tablets: one compact row — live count, Show, Save. "Clear all" sits above the panel. */}
