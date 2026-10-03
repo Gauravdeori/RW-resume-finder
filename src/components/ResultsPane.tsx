@@ -151,7 +151,7 @@ interface Props {
   onSave: () => void;
   onClear: () => void;
   onOpenCv: (c: Candidate) => void;
-  /** View menu: 1-column list (default) or a 3-column grid of compact cards. */
+  /** View menu: a 3-column grid of compact cards (default) or a 1-column list. */
   view: 'list' | 'grid';
   density: Density;
 }

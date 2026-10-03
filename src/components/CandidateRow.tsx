@@ -7,11 +7,11 @@ export type Density = 'compact' | 'comfortable';
 
 /**
  * Fixed card heights: the results page works out how many cards fit the screen from them.
- * Compact rows are sized so five fit on a 1440x900 screen.
+ * Compact rows and tiles are the same height, so five rows fit on a 1440x900 screen in either view.
  */
 export const CARD_H: Record<CardVariant, Record<Density, number>> = {
   row: { compact: 104, comfortable: 122 },
-  tile: { compact: 156, comfortable: 172 },
+  tile: { compact: 104, comfortable: 122 },
 };
 
 /** Page 1 of the converted CV as a tiny inline SVG (no images to load). Paper-white in both themes. */
@@ -68,7 +68,8 @@ export function GaishiBadge({ score, size }: { score: string; size: 'lg' | 'md' 
  * One result as a card of fixed height.
  * - "row" (1-column view): name with the details line beside it, role, five key facts in one line, CV thumbnail,
  *   and the gaishi letter large in the top-right corner.
- * - "tile" (3-column view): the same facts packed into a compact card.
+ * - "tile" (3-column view, default): the same facts in five short lines, as tall as a compact row, so a
+ *   page shows 3 columns by 5 rows.
  * Memoised: re-renders only when its candidate, layout or language changes.
  */
 export const CandidateRow = memo(function CandidateRow({
@@ -103,26 +104,39 @@ export const CandidateRow = memo(function CandidateRow({
     </button>
   );
 
-  if (variant === 'tile')
+  if (variant === 'tile') {
+    const en = `${t.factEnglishShort} ${t.level[c.englishLevel]}`;
+    const jp = `${t.factJapaneseShort} ${t.level[c.japaneseLevel]}`;
+    const factLine = [`${t.factAge} ${c.age}`, t.seniorityFact(c.seniority), en, jp].join(' · ');
     return (
       <article
-        className={`anim-fade-up flex flex-col overflow-hidden rounded-xl border border-line bg-card px-3.5 shadow-card hover:border-accent/40 hover:shadow-hover ${roomy ? 'py-3.5' : 'py-3'}`}
+        className={`anim-fade-up flex flex-col overflow-hidden rounded-xl border border-line bg-card px-3.5 shadow-card hover:border-accent/40 hover:shadow-hover ${roomy ? 'py-3' : 'py-2'}`}
         style={{ height: CARD_H.tile[density] }}
       >
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-[15px] leading-[19px] font-bold tracking-[-0.01em]">{name}</h2>
-            <p className="truncate text-[12.5px] leading-[17px] font-medium">{t.titleAt(c)}</p>
-            <p className="truncate text-[11.5px] leading-[15px] text-muted">{t.cardMeta(c)}</p>
+            <h2 className="truncate text-[14.5px] leading-[18px] font-bold tracking-[-0.01em]">{name}</h2>
+            <p className="truncate text-[12.5px] leading-[16px] font-medium">{t.titleAt(c)}</p>
           </div>
           <GaishiBadge score={c.gaishiScore} size="md" />
         </div>
-        <dl className={`grid grid-cols-3 gap-x-2.5 gap-y-1 ${roomy ? 'mt-2.5' : 'mt-1.5'}`}>
-          {facts}
-          <div className="flex items-end justify-end">{openCv}</div>
+        <p className="truncate text-[11.5px] leading-[15px] text-muted">{t.cardMeta(c)}</p>
+        <dl className={`text-[12px] leading-[15px] ${roomy ? 'mt-2' : 'mt-1'}`}>
+          <div className="truncate" title={factLine}>
+            <dt className="sr-only">{`${t.factAge}, ${t.factSeniority}, ${t.factEnglish}, ${t.factJapanese}`}</dt>
+            <dd className="inline font-medium">{factLine}</dd>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <dt className="sr-only">{t.factSchool}</dt>
+            <dd className="min-w-0 flex-1 truncate text-muted" title={school}>
+              {school}
+            </dd>
+            {openCv}
+          </div>
         </dl>
       </article>
     );
+  }
 
   return (
     <article

@@ -188,6 +188,9 @@ const en = {
   factSeniority: 'Seniority',
   factEnglish: 'English',
   factJapanese: 'Japanese',
+  /** Short language labels for the compact 3-column cards. */
+  factEnglishShort: 'EN',
+  factJapaneseShort: 'JP',
   factGaishi: 'Gaishi score',
   factSchool: 'School',
   schoolWithClass: (school: string, cls: SchoolClass) => (cls === 'Overseas' ? school : `${school} (${cls} class)`),

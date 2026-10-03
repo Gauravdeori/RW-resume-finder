@@ -155,6 +155,8 @@ export const ja: Dict = {
   factSeniority: '役職',
   factEnglish: '英語',
   factJapanese: '日本語',
+  factEnglishShort: '英語',
+  factJapaneseShort: '日本語',
   factGaishi: '外資スコア',
   factSchool: '学校',
   schoolWithClass: (school, cls) => (cls === 'Overseas' ? school : `${school} (${cls} ランク)`),

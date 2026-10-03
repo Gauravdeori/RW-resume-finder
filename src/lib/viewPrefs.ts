@@ -3,19 +3,22 @@ import type { Density } from '../components/CandidateRow';
 /** View menu choices, remembered in this browser. */
 export interface ViewPrefs {
   density: Density;
-  /** Results as a 1-column list (default) or a 3-column grid. */
+  /** Results as a 3-column grid (default) or a 1-column list. */
   results: 'list' | 'grid';
 }
 
-const KEY = 'resumeFinder.view.v1';
-export const DEFAULT_VIEW: ViewPrefs = { density: 'compact', results: 'list' };
+/** v2: the default became the 3-column grid. v1 only contributes the density choice. */
+const KEY = 'resumeFinder.view.v2';
+const OLD_KEY = 'resumeFinder.view.v1';
+export const DEFAULT_VIEW: ViewPrefs = { density: 'compact', results: 'grid' };
 
 export function loadView(): ViewPrefs {
   try {
-    const v = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<ViewPrefs>;
+    const v = JSON.parse(localStorage.getItem(KEY) ?? localStorage.getItem(OLD_KEY) ?? '{}') as Partial<ViewPrefs>;
+    const fromV1 = localStorage.getItem(KEY) === null;
     return {
       density: v.density === 'comfortable' ? 'comfortable' : 'compact',
-      results: v.results === 'grid' ? 'grid' : 'list',
+      results: !fromV1 && v.results === 'list' ? 'list' : 'grid',
     };
   } catch {
     return DEFAULT_VIEW;
