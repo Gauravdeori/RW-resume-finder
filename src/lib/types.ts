@@ -34,6 +34,12 @@ export type GaishiScore = (typeof GAISHI_SCORES)[number];
 export const DECADES = [20, 30, 40, 50, 60] as const;
 export const AGE_MIN = 20;
 export const AGE_MAX = 69;
+/**
+ * When a typed or dragged age range lights a decade button: only when the range covers MOST of that decade.
+ * The upper end must reach the decade's 6th year (50s: 56 or more), and the lower end must start no later than
+ * 10 - 6 = 4 years in (40s: 44 or less). 50-55 leaves the 50s unlit; 50-56 lights it. Change this one number to tune.
+ */
+export const AGE_LIGHT = 6;
 
 export type Gender = 'male' | 'female' | 'not_stated';
 export type FilterGender = 'male' | 'female';

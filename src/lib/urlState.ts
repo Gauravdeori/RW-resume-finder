@@ -3,7 +3,8 @@ import { AGE_MAX, AGE_MIN, emptyFilters, type Filters } from './types';
 
 /**
  * Search state <-> URL query string, so a search can be shared or refreshed.
- *   ?s=<locked step 1>&s=<locked step 2>&f=<current filters>&sort=new
+ *   ?s=<locked step 1>&s=<locked step 2>&f=<current filters>&sort=new&v=results
+ * v=results: the split view (results) for the first step; with locked steps it is always the split view.
  * Each step is "key.value~key.value", lists joined with ",", e.g. f=ind.financial~gs.A,B~age.d40
  * Written with history.replaceState: no reloads, no extra history entries.
  */
@@ -90,6 +91,8 @@ export interface SearchState {
   steps: Filters[];
   draft: Filters;
   sort: SortKey;
+  /** Full-screen search, or the split view with results. */
+  screen: 'search' | 'results';
 }
 
 export function readSearchState(): SearchState {
@@ -98,15 +101,17 @@ export function readSearchState(): SearchState {
     steps: params.getAll('s').map(decodeFilters),
     draft: decodeFilters(params.get('f') ?? ''),
     sort: params.get('sort') === 'new' ? 'new' : 'best',
+    screen: params.get('v') === 'results' || params.has('s') ? 'results' : 'search',
   };
 }
 
-export function writeSearchState({ steps, draft, sort }: SearchState): void {
+export function writeSearchState({ steps, draft, sort, screen }: SearchState): void {
   const params = new URLSearchParams();
   for (const s of steps) params.append('s', encodeFilters(s));
   const f = encodeFilters(draft);
   if (f) params.set('f', f);
   if (sort !== 'best') params.set('sort', sort);
+  if (screen === 'results' && !steps.length) params.set('v', 'results');
   const qs = params.toString();
   const url = `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`;
   if (url !== `${window.location.pathname}${window.location.search}${window.location.hash}`) window.history.replaceState(null, '', url);

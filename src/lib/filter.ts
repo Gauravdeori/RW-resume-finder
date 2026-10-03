@@ -1,5 +1,7 @@
 import { CANDIDATES, generateCandidates } from './data';
 import {
+  AGE_LIGHT,
+  DECADES,
   DEGREES,
   GAISHI_SCORES,
   INDUSTRIES,
@@ -27,11 +29,7 @@ export const decadeOf = (age: number) => Math.min(60, Math.floor(age / 10) * 10)
 /** Decades lit by the age control: the ticked ones, or the ones the slider range overlaps. */
 export function litDecades(f: AgeFields): number[] {
   if (f.ageMode === 'decades') return f.decades;
-  if (f.ageMode === 'range') {
-    const out: number[] = [];
-    for (const d of [20, 30, 40, 50, 60]) if (f.ageMax >= d && f.ageMin <= d + 9) out.push(d);
-    return out;
-  }
+  if (f.ageMode === 'range') return DECADES.filter((d) => f.ageMin <= d + (10 - AGE_LIGHT) && f.ageMax >= d + AGE_LIGHT);
   return [];
 }
 

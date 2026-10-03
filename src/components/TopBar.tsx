@@ -42,7 +42,7 @@ export const TopBar = memo(function TopBar({
 
   return (
     <header className="sticky top-0 z-30 flex-none border-b border-topbar-border bg-topbar text-white">
-      <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-4 px-4 md:px-8 lg:gap-7 lg:px-10">
+      <div className="flex h-14 items-center gap-4 px-4 lg:gap-7 lg:px-6">
         <a
           href={hrefFor('search')}
           aria-label={t.homeLabel}
@@ -59,7 +59,7 @@ export const TopBar = memo(function TopBar({
         </a>
         <span aria-hidden className="-mx-1 hidden h-5 w-px bg-white/35 md:block lg:-mx-2" />
 
-        <nav aria-label={t.mainNav} className="hidden md:block">
+        <nav aria-label={t.mainNav} className="hidden min-w-0 overflow-hidden md:block">
           <ul className="flex items-center gap-6 text-[12px]">
             {links.map((l) => (
               <li key={l.key}>
@@ -74,7 +74,7 @@ export const TopBar = memo(function TopBar({
           </ul>
         </nav>
 
-        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        <div className="ml-auto flex flex-none items-center gap-2 sm:gap-3">
           <ThemeSwitch />
           <div role="group" aria-label={t.language} className="flex border border-white/60">
             {LANGS.map((l) => (
@@ -84,7 +84,10 @@ export const TopBar = memo(function TopBar({
                 lang={l.id}
                 aria-pressed={lang === l.id}
                 onClick={() => setLang(l.id)}
-                className={cx('h-[30px] px-2 text-[12px]', lang === l.id ? 'bg-white text-[#222]' : 'text-white hover:bg-white/10')}
+                className={cx(
+                  'h-[30px] px-2 text-[12px]',
+                  lang === l.id ? 'bg-[#3a1a1f] font-semibold text-accent shadow-[inset_0_0_0_1px_var(--accent)]' : 'text-white hover:bg-white/10',
+                )}
               >
                 {l.label}
               </button>

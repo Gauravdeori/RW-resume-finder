@@ -3,13 +3,15 @@ import { useId, type ReactNode } from 'react';
 export const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(' ');
 
 /**
- * Shared look for 36px controls: 4px corners, a slight lift on hover.
- * Only transform is animated (150ms); colours and shadows switch instantly.
- * Selected = charcoal fill + white text (white fill + charcoal text in dark mode).
+ * Shared look for selectable controls (Resume Studio design language). Height follows the density setting
+ * (36px compact, 40px comfortable). A tap gives a quick 120ms press; only transform is animated.
+ * Unselected: white with a grey border, coral border at 50% on hover.
+ * Selected ("picked"): light red tint, coral border, red text, semibold. Never a black fill.
  */
-const CONTROL = 'rounded border transition-transform duration-150 ease-out hover:-translate-y-px hover:shadow-control active:translate-y-0';
-const OFF = 'border-line bg-field text-ink hover:border-ink/45';
-const ON = 'border-sel bg-sel text-on-sel';
+export const PRESS = 'transition-transform duration-[120ms] ease-out active:scale-[0.96]';
+export const OFF = 'border-line bg-field text-ink hover:border-accent/50';
+export const PICKED = 'border-pick-line bg-pick text-pick-ink font-semibold';
+const CONTROL = `rounded border ${PRESS}`;
 
 /** One-click toggle button. */
 export function Toggle({
@@ -36,9 +38,9 @@ export function Toggle({
       title={title}
       onClick={onClick}
       className={cx(
-        'inline-flex h-9 items-center justify-center gap-1.5 px-3 text-[13px] leading-none whitespace-nowrap',
+        'inline-flex h-[var(--ctl-h)] items-center justify-center gap-1.5 px-3 text-[13px] leading-none whitespace-nowrap',
         CONTROL,
-        on ? ON : OFF,
+        on ? PICKED : OFF,
         className,
       )}
     >
@@ -47,7 +49,7 @@ export function Toggle({
   );
 }
 
-/** Checkbox tile used for industry and position: shows a tick when on. Labels stay on one line. */
+/** Checkbox tile used for industry and position: shows a red tick when on. Labels stay on one line. */
 export function CheckTile({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
   return (
     <button
@@ -55,13 +57,13 @@ export function CheckTile({ on, onClick, label }: { on: boolean; onClick: () => 
       role="checkbox"
       aria-checked={on}
       onClick={onClick}
-      className={cx('flex h-9 items-center gap-2 px-3 text-left text-[13px] leading-none whitespace-nowrap', CONTROL, on ? ON : OFF)}
+      className={cx('flex h-[var(--ctl-h)] items-center gap-2 px-3 text-left text-[13px] leading-none whitespace-nowrap', CONTROL, on ? PICKED : OFF)}
     >
       <span
         aria-hidden
         className={cx(
           'flex h-[14px] w-[14px] flex-none items-center justify-center rounded-[3px] border',
-          on ? 'border-on-sel bg-on-sel text-sel' : 'border-muted/70',
+          on ? 'border-accent bg-accent text-white' : 'border-muted/70',
         )}
       >
         {on && (
@@ -76,7 +78,7 @@ export function CheckTile({ on, onClick, label }: { on: boolean; onClick: () => 
 }
 
 /**
- * Text input: 36px tall, 14px text, 8px x 12px padding, 1px #D9D9D9 border, 4px corners.
+ * Text input: control height, 14px text, 12px side padding, 1px #D9D9D9 border, 4px corners.
  * Phones use 16px text so iOS Safari does not zoom in when the field is tapped.
  */
 export function TextField({
@@ -85,6 +87,7 @@ export function TextField({
   onChange,
   trailing,
   hideLabel,
+  className,
 }: {
   label: string;
   value: string;
@@ -92,11 +95,12 @@ export function TextField({
   trailing?: ReactNode;
   /** The row label already says what this is: keep the label for screen readers only. */
   hideLabel?: boolean;
+  className?: string;
 }) {
   const id = useId();
   return (
-    <div className="min-w-0">
-      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'mb-1 block text-[12px] leading-tight text-muted'}>
+    <div className={cx('min-w-0', className)}>
+      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'mb-0.5 block text-[11.5px] leading-tight text-muted'}>
         {label}
       </label>
       <div className="flex">
@@ -107,8 +111,8 @@ export function TextField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={cx(
-            'h-9 w-full min-w-0 rounded border border-line bg-field px-3 py-2 text-[16px] text-ink outline-none sm:text-[14px]',
-            'hover:border-ink/45 focus:border-ink/60 focus:shadow-control',
+            'h-[var(--ctl-h)] w-full min-w-0 rounded border border-line bg-field px-3 text-[16px] text-ink outline-none sm:text-[14px]',
+            'hover:border-accent/50 focus:border-accent',
             'focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent',
             trailing ? 'rounded-r-none' : undefined,
           )}
@@ -120,41 +124,21 @@ export function TextField({
 }
 
 /**
- * A filter row (Ted's grid, sized for the filter panel): a fixed 80px label column, a 12px gap,
+ * A filter row (Ted's grid): a fixed label column (--label-w: 80px, 96px in Japanese), a 12px gap,
  * then the controls, so all row labels share one left edge and all controls start on one vertical line.
  * On phones (under 640px) the label sits above its controls, so the controls get the full width.
  */
 export function FilterRow({ label, sub, children }: { label: string; sub?: string; children: ReactNode }) {
   const id = useId();
   return (
-    <div role="group" aria-labelledby={id} className="grid grid-cols-1 gap-x-3 gap-y-1.5 py-2 sm:grid-cols-[80px_minmax(0,1fr)]">
-      <div className="sm:pt-[10px]">
-        <h3 id={id} className="text-[12.5px] leading-tight font-semibold">
+    <div role="group" aria-labelledby={id} className="grid grid-cols-1 gap-x-3 gap-y-1.5 py-[var(--row-py)] sm:grid-cols-[var(--label-w)_minmax(0,1fr)]">
+      <div className="sm:pt-[calc((var(--ctl-h)-15px)/2)]">
+        <h3 id={id} className="text-[12.5px] leading-[15px] font-semibold">
           {label}
         </h3>
         {sub && <p className="mt-1 text-[11.5px] leading-snug text-muted">{sub}</p>}
       </div>
       <div className="min-w-0">{children}</div>
-    </div>
-  );
-}
-
-/** Small grey label above a group of buttons inside a row. */
-export function GroupLabel({ children, id }: { children: ReactNode; id?: string }) {
-  return (
-    <div id={id} className="mb-1 text-[12px] leading-tight text-muted">
-      {children}
-    </div>
-  );
-}
-
-/** A labelled group of toggles that wraps, with 8px gaps. */
-export function ToggleGroup({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
-  const id = useId();
-  return (
-    <div role="group" aria-labelledby={id} className={className}>
-      <GroupLabel id={id}>{label}</GroupLabel>
-      <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
 }

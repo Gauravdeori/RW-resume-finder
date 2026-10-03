@@ -29,7 +29,7 @@ export function Trail({ items }: { items: TrailItem[] }) {
                 <span
                   className={cx(
                     'tabular ml-2 rounded-full px-1.5 py-px text-[11px] font-semibold',
-                    it.current ? 'bg-on-sel/15 text-on-sel' : 'bg-tile text-muted',
+                    it.current ? 'bg-accent/15 text-pick-ink' : 'bg-tile text-muted',
                   )}
                 >
                   {fmtNum(it.count)}
@@ -39,7 +39,7 @@ export function Trail({ items }: { items: TrailItem[] }) {
           );
           const cls = cx(
             'inline-flex h-8 items-center rounded-full border px-3 text-[12.5px] font-medium whitespace-nowrap',
-            it.current ? 'border-sel bg-sel text-on-sel shadow-control' : 'border-line bg-card text-ink',
+            it.current ? 'border-pick-line bg-pick font-semibold text-pick-ink' : 'border-line bg-card text-ink',
           );
           return (
             <Fragment key={i}>
@@ -57,7 +57,7 @@ export function Trail({ items }: { items: TrailItem[] }) {
                   <button
                     type="button"
                     onClick={it.onClick}
-                    className={cx(cls, 'transition-[transform,box-shadow,border-color] duration-150 hover:-translate-y-px hover:border-ink/45 hover:shadow-control')}
+                    className={cx(cls, 'transition-transform duration-[120ms] hover:border-accent/50 active:scale-[0.96]')}
                   >
                     {body}
                   </button>

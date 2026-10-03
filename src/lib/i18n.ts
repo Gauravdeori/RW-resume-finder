@@ -425,6 +425,63 @@ const en = {
     },
   },
 
+  /** Full-screen search (first step) and split view (results, search within). */
+  showCandidates: 'Show candidates',
+  recentSearches: 'Recent searches',
+  noRecent: 'Searches you run appear here.',
+  showAllSaved: (n: number) => `Show all ${n}`,
+  allFilters: 'All filters',
+  allFiltersHint: 'Back to the full-screen search with every filter',
+  ageLabel: (a: number, b: number) => `Age ${a} to ${b}`,
+  ageFrom: 'From',
+  ageTo: 'to',
+  ageUnit: '',
+  gaishiBadge: (s: string) => `Gaishi score ${s}`,
+  openSavedTitle: 'Open saved search',
+  toastSaved: (name: string) => `Saved “${name}”`,
+  toastExported: (n: number) => `Exported ${fmtNum(n)} candidates`,
+  csv: { name: 'Name', title: 'Title', company: 'Company', industry: 'Industry', cvUpdated: 'CV updated' },
+
+  /** Menu bar under the top bar (like Word). */
+  menu: {
+    label: 'Menu',
+    file: 'File',
+    edit: 'Edit',
+    view: 'View',
+    help: 'Help',
+    newSearch: 'New search',
+    openSaved: 'Open saved search…',
+    save: 'Save',
+    saveAs: 'Save as…',
+    exportCsv: 'Export results (CSV)',
+    clearAll: 'Clear all filters',
+    undo: 'Undo last filter',
+    light: 'Light',
+    dark: 'Dark',
+    compact: 'Compact',
+    comfortable: 'Comfortable',
+    oneCol: '1-column results',
+    threeCol: '3-column results',
+    howTo: 'How to search',
+    shortcuts: 'Keyboard shortcuts',
+    about: 'About this prototype',
+  },
+  help: {
+    howTo: [
+      'Tick what the role needs. The count on the left updates with every click.',
+      'Choices in one row widen the search; different rows narrow it.',
+      'Press “Show candidates” to see the matching CVs.',
+      '“Search within these results” locks the list as a step, so you can add more filters on top.',
+      'Click a step in the trail to go back to it.',
+    ],
+    shortcuts: [
+      ['Ctrl + Z', 'Undo the last filter change'],
+      ['Ctrl + S', 'Save the search'],
+      ['Esc', 'Close a menu, dialog or CV'],
+      ['← →  ↑ ↓', 'Move through the menu bar and menus'],
+    ] as [string, string][],
+  },
+
   footer: 'Prototype with sample data. Every candidate, file and person shown is invented.',
 };
 

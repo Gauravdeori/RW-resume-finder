@@ -5,16 +5,16 @@ import type { SortKey } from '../lib/filter';
 import { fmtNum, useI18n } from '../lib/i18n';
 import type { Candidate, Filters } from '../lib/types';
 import { useAnimatedNumber } from '../lib/useAnimatedNumber';
-import { CARD_H, CandidateRow } from './CandidateRow';
+import { CARD_H, CandidateRow, type Density } from './CandidateRow';
 import { Toggle, cx } from './controls';
 
 /** Red count card: coral to a slightly deeper red, soft red shadow. */
 export const COUNT_CARD = 'bg-[linear-gradient(135deg,var(--accent)_0%,var(--accent-deep)_100%)] shadow-accent';
 const LIFT = 'transition-transform duration-150 hover:-translate-y-px active:translate-y-0';
 const SECONDARY = `h-9 rounded-lg border border-line bg-card px-3 text-[12.5px] font-medium whitespace-nowrap hover:border-ink/45 hover:shadow-control disabled:cursor-not-allowed disabled:opacity-45 ${LIFT}`;
-const GAP = 12;
-/** Two columns of cards once the results area is this wide. */
-const TWO_COLUMNS = 760;
+const GAP = 10;
+/** The 3-column view drops to 2 columns, then 1, when the results area is narrower than this per column. */
+const MIN_TILE_W = 280;
 
 /** Live count: a big rolling number with tabular figures and a fixed width, so nothing shifts as it changes. */
 const CountCard = memo(function CountCard({ count, ofLine }: { count: number; ofLine: string }) {
@@ -151,6 +151,9 @@ interface Props {
   onSave: () => void;
   onClear: () => void;
   onOpenCv: (c: Candidate) => void;
+  /** View menu: 1-column list (default) or a 3-column grid of compact cards. */
+  view: 'list' | 'grid';
+  density: Density;
 }
 
 /**
@@ -171,6 +174,8 @@ export const ResultsPane = memo(function ResultsPane({
   onSave,
   onClear,
   onOpenCv,
+  view,
+  density,
 }: Props) {
   const { t } = useI18n();
   const listRef = useRef<HTMLDivElement>(null);
@@ -185,8 +190,10 @@ export const ResultsPane = memo(function ResultsPane({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const cols = box.w >= TWO_COLUMNS ? 2 : 1;
-  const rows = Math.max(1, Math.floor((box.h + GAP) / (CARD_H + GAP)));
+  const variant = view === 'grid' ? 'tile' : 'row';
+  const cols = view === 'grid' ? Math.max(1, Math.min(3, Math.floor((box.w + GAP) / (MIN_TILE_W + GAP)))) : 1;
+  const cardH = CARD_H[variant][density];
+  const rows = Math.max(1, Math.floor((box.h + GAP) / (cardH + GAP)));
   const pageSize = rows * cols;
 
   // A new result set starts at page 1. Resizing keeps the first card on screen in view.
@@ -263,7 +270,7 @@ export const ResultsPane = memo(function ResultsPane({
         ) : (
           Array.from(pageItems, (i) => (
             <div key={CANDIDATES[i].id} role="listitem">
-              <CandidateRow c={CANDIDATES[i]} onOpenCv={onOpenCv} />
+              <CandidateRow c={CANDIDATES[i]} variant={variant} density={density} onOpenCv={onOpenCv} />
             </div>
           ))
         )}

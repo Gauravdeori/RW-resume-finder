@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 export type Theme = 'light' | 'dark';
 
@@ -14,34 +14,35 @@ function readStored(): Theme | null {
   }
 }
 
+// One shared store, so the top-bar switch and the View menu always agree.
+let chosen: Theme | null = readStored();
+const listeners = new Set<() => void>();
+const subscribe = (fn: () => void) => {
+  listeners.add(fn);
+  const mq = darkQuery();
+  mq.addEventListener('change', fn);
+  return () => {
+    listeners.delete(fn);
+    mq.removeEventListener('change', fn);
+  };
+};
+const current = (): Theme => chosen ?? (darkQuery().matches ? 'dark' : 'light');
+
+function setTheme(t: Theme) {
+  chosen = t;
+  document.documentElement.setAttribute('data-theme', t);
+  try {
+    localStorage.setItem(KEY, t);
+  } catch {
+    /* storage unavailable: the choice lasts for this visit only */
+  }
+  listeners.forEach((fn) => fn());
+}
+
 /**
- * Light / dark theme. Follows the device setting until the recruiter flips the switch;
+ * Light / dark theme. Follows the device setting until the recruiter picks one (top-bar switch or View menu);
  * the choice is then remembered and applied as data-theme on <html> (index.html applies it before first paint).
  */
 export function useTheme(): [Theme, (t: Theme) => void] {
-  const [chosen, setChosen] = useState<Theme | null>(readStored);
-  const [device, setDevice] = useState<Theme>(() => (darkQuery().matches ? 'dark' : 'light'));
-
-  useEffect(() => {
-    const mq = darkQuery();
-    const onChange = () => setDevice(mq.matches ? 'dark' : 'light');
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-
-  useEffect(() => {
-    if (chosen) document.documentElement.setAttribute('data-theme', chosen);
-    else document.documentElement.removeAttribute('data-theme');
-  }, [chosen]);
-
-  const setTheme = (t: Theme) => {
-    setChosen(t);
-    try {
-      localStorage.setItem(KEY, t);
-    } catch {
-      /* storage unavailable: the choice lasts for this visit only */
-    }
-  };
-
-  return [chosen ?? device, setTheme];
+  return [useSyncExternalStore(subscribe, current), setTheme];
 }

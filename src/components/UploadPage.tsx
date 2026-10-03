@@ -229,7 +229,7 @@ export function UploadPage({
                   onClick={() => setPair([a, b])}
                   className={cx(
                     'flex min-h-[112px] flex-col justify-center rounded-[12px] border px-3.5 py-4 text-left transition-colors sm:px-5',
-                    on ? 'border-sel bg-sel text-on-sel' : 'border-tile-line bg-tile text-ink hover:border-ink/40',
+                    on ? 'border-pick-line bg-pick text-pick-ink' : 'border-tile-line bg-tile text-ink hover:border-accent/50',
                   )}
                 >
                   <span className="text-[16px] font-medium sm:text-[20px] sm:whitespace-nowrap">{pairLabel(a, b)}</span>

@@ -4,8 +4,11 @@ import { useAnimatedNumber } from '../lib/useAnimatedNumber';
 import { Modal } from './Modal';
 import { COUNT_CARD } from './ResultsPane';
 
-/** Phones and tablets: sticky bar with the live count and a "Filters (6)" button that opens the sheet. */
-export function MobileBar({ count, active, onOpen }: { count: number; active: number; onOpen: () => void }) {
+/**
+ * Phones and tablets: sticky bar with the live count and one button: "Filters (6)" (opens the sheet) on the
+ * results, or "Show candidates" on the full search (pass `label`).
+ */
+export function MobileBar({ count, active, onOpen, label }: { count: number; active: number; onOpen: () => void; label?: string }) {
   const { t } = useI18n();
   const shown = useAnimatedNumber(count);
   return (
@@ -24,10 +27,12 @@ export function MobileBar({ count, active, onOpen }: { count: number; active: nu
         onClick={onOpen}
         className="ml-auto flex h-12 items-center gap-2 rounded-lg bg-sel px-5 text-[14px] font-bold text-on-sel"
       >
-        <svg viewBox="0 0 16 16" aria-hidden className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <path d="M2 4h12M4.5 8h7M7 12h2" />
-        </svg>
-        {t.filtersButton(active)}
+        {!label && (
+          <svg viewBox="0 0 16 16" aria-hidden className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <path d="M2 4h12M4.5 8h7M7 12h2" />
+          </svg>
+        )}
+        {label ?? t.filtersButton(active)}
       </button>
     </div>
   );
