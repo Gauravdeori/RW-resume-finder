@@ -55,18 +55,5 @@ Deploy: Netlify / Vercel / Render static site with build command `npm run build`
 - A search step = its filters applied to the previous step's results.
 - Clicks recount at once; typing recounts 300 ms after the last key press.
 
-## For the backend hand-over (Deepanker)
 
-- `Candidate` in `lib/types.ts` lists the fields to extract when a CV is converted.
-- `compileFilters` in `lib/filter.ts` is the reference behaviour for the real count / search query.
-- `parseJobDescription` in `lib/jdParser.ts` returns `{ patch, filled }`; swap its body for an AI call returning the same JSON.
-- `education` is a list of `{ degree, major, school, schoolRating, gpa, gpaScale }` (major is null for an MBA; gpaScale is 4.0, 4.3, 5.0 or 100). Also `qualifications`, `otherQualifications`, `toeicScore` and `jlpt` (both optional).
-- "Best CVs" is a placeholder rank (gaishi score, best school rating, seniority, CV date).
 
-## Assumptions to confirm with Ted / Aaron
-
-- Gender filter shows Male / Female only; "not stated" candidates drop out when either is ticked. Needs a per-country switch later.
-- "Worked at a foreign company" counts the current company too.
-- "Edit filters" edits the last step; earlier steps stay as they are.
-- School ratings, lists and Japanese labels are drafts (Japanese needs a native check). Older saved searches and links that used "school class" still open as school rating.
-- The Gaishi score is made of English, foreign companies and time overseas; Japanese is shown with its parts but does not count towards it.
