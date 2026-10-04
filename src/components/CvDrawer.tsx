@@ -69,12 +69,23 @@ export default function CvDrawer({ c, onClose }: { c: Candidate; onClose: () => 
       </Section>
 
       <Section title={t.cvEducation}>
-        <p>{t.educationText(c)}</p>
+        <ul className="flex flex-col gap-1">
+          {/* Highest degree first, like a CV. */}
+          {[...c.education].reverse().map((e) => (
+            <li key={e.degree}>{t.educationLine(e)}</li>
+          ))}
+        </ul>
       </Section>
 
       <Section title={t.cvLanguages}>
         <p>{t.languagesText(c)}</p>
       </Section>
+
+      {c.qualifications.length + c.otherQualifications.length > 0 && (
+        <Section title={t.cvQualifications}>
+          <p>{[...c.qualifications.map((q) => t.qualificationFull[q]), ...c.otherQualifications].join(', ')}</p>
+        </Section>
+      )}
     </Modal>
   );
 }

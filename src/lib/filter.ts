@@ -8,13 +8,15 @@ import {
   LEVELS,
   MAJORS,
   POSITIONS,
-  SCHOOL_CLASSES,
+  QUALIFICATIONS,
+  SCHOOL_RATINGS,
   SENIORITIES,
   type AgeFields,
+  type Education,
   type Filters,
   type RowKey,
   type GaishiScore,
-  type SchoolClass,
+  type SchoolRating,
   type Seniority,
 } from './types';
 
@@ -26,6 +28,9 @@ import {
  */
 
 export const decadeOf = (age: number) => Math.min(60, Math.floor(age / 10) * 10);
+
+/** A GPA on the school's own scale (4.0, 4.3, 5.0 or 100) moved to a 4.0 scale; null when the CV states none. */
+export const gpaOn4 = (e: Pick<Education, 'gpa' | 'gpaScale'>): number | null => (e.gpa === null ? null : (e.gpa / e.gpaScale) * 4);
 
 /** Decades lit by the age control: the ticked ones, or the ones the slider range overlaps. */
 export function litDecades(f: AgeFields): number[] {
@@ -54,13 +59,24 @@ const columns = (n: number) => {
     english: col(),
     japanese: col(),
     gaishi: col(),
-    degree: col(),
-    schoolClass: col(),
-    major: col(),
+    /** Bit per degree held (bit = index in DEGREES). */
+    degrees: col(),
+    /** Major held with each degree (index in MAJORS), NO_MAJOR when none (MBA, or degree not held). */
+    majorOf: DEGREES.map(() => col()),
+    /** Bit per school rating over all the candidate's schools. */
+    ratings: col(),
+    /** The best rating (index in RATING_RANK order), for "Best CVs". */
+    bestRating: col(),
+    /** Best GPA on a 4.0 scale x 100 (0-400); NO_GPA when no GPA is stated. */
+    gpa: new Uint16Array(n),
+    /** Bit per qualification (index in QUALIFICATIONS). */
+    quals: new Uint16Array(n),
     foreign: col(),
     overseas: col(),
   };
 };
+const NO_MAJOR = 255;
+const NO_GPA = 0xffff;
 let IX = columns(0);
 /** Every candidate, in data order. */
 export let ALL = new Uint32Array(0);
@@ -75,8 +91,9 @@ function buildIndexes() {
   const lvl = indexOf(LEVELS);
   const gs = indexOf(GAISHI_SCORES);
   const deg = indexOf(DEGREES);
-  const cls = indexOf(SCHOOL_CLASSES);
+  const rat = indexOf(SCHOOL_RATINGS);
   const maj = indexOf(MAJORS);
+  const qual = indexOf(QUALIFICATIONS);
   CANDIDATES.forEach((c, i) => {
     IX.age[i] = c.age;
     IX.gender[i] = GENDER_IDX.get(c.gender)!;
@@ -86,9 +103,21 @@ function buildIndexes() {
     IX.english[i] = lvl.get(c.englishLevel)!;
     IX.japanese[i] = lvl.get(c.japaneseLevel)!;
     IX.gaishi[i] = gs.get(c.gaishiScore)!;
-    IX.degree[i] = deg.get(c.degree)!;
-    IX.schoolClass[i] = cls.get(c.schoolClass)!;
-    IX.major[i] = maj.get(c.major)!;
+    for (const m of IX.majorOf) m[i] = NO_MAJOR;
+    let best = NO_GPA;
+    let bestRank = 255;
+    for (const e of c.education) {
+      const d = deg.get(e.degree)!;
+      IX.degrees[i] |= 1 << d;
+      if (e.major) IX.majorOf[d][i] = maj.get(e.major)!;
+      IX.ratings[i] |= 1 << rat.get(e.schoolRating)!;
+      bestRank = Math.min(bestRank, RATING_RANK[e.schoolRating]);
+      const g = gpaOn4(e);
+      if (g !== null) best = best === NO_GPA ? Math.round(g * 100) : Math.max(best, Math.round(g * 100));
+    }
+    IX.bestRating[i] = bestRank;
+    IX.gpa[i] = best;
+    for (const q of c.qualifications) IX.quals[i] |= 1 << qual.get(q)!;
     IX.foreign[i] = Math.min(255, c.foreignCompanyCount);
     IX.overseas[i] = Math.min(255, c.yearsOverseas);
   });
@@ -173,11 +202,30 @@ function rowTests(f: Filters): RowTest[] {
   }
   if (f.overseas === 'yes') add('overseas', (i) => IX.overseas[i] !== 0);
   if (f.overseas === 'no') add('overseas', (i) => IX.overseas[i] === 0);
-  bits('degree', mask(f.degrees, DEGREES), IX.degree);
-  bits('schoolClass', mask(f.schoolClasses, SCHOOL_CLASSES), IX.schoolClass);
-  bits('major', mask(f.majors, MAJORS), IX.major);
+  // Degree: holds any ticked degree; where a major is picked for it, with that major for that same degree.
+  if (f.degrees.length) {
+    const wanted = f.degrees
+      .map((d) => DEGREES.indexOf(d))
+      .filter((d) => d >= 0)
+      .map((d) => {
+        const major = f.majorFor[DEGREES[d]];
+        return { bit: 1 << d, majors: IX.majorOf[d], major: major ? MAJORS.indexOf(major) : -1 };
+      });
+    add('degree', (i) => wanted.some((w) => (IX.degrees[i] & w.bit) !== 0 && (w.major < 0 || w.majors[i] === w.major)));
+  }
+  const ratings = mask(f.schoolRatings, SCHOOL_RATINGS);
+  if (ratings) add('schoolRating', (i) => (IX.ratings[i] & ratings) !== 0);
+  if (f.gpaMin !== null && f.gpaMin > 0) {
+    const min = Math.round(f.gpaMin * 100);
+    add('gpa', (i) => IX.gpa[i] !== NO_GPA && IX.gpa[i] >= min);
+  }
+  // Qualifications: any ticked one, or the typed text found in any qualification on the CV.
+  const quals = mask(f.qualifications, QUALIFICATIONS);
+  const qualText = q(f.qualText);
+  if (quals || qualText)
+    add('qualification', (i) => (IX.quals[i] & quals) !== 0 || (!!qualText && CANDIDATES[i].lc.quals.includes(qualText)));
   const school = q(f.schoolName);
-  if (school) add('school', (i) => CANDIDATES[i].lc.school.includes(school));
+  if (school) add('school', (i) => CANDIDATES[i].lc.schools.some((s) => s.includes(school)));
   return tests;
 }
 
@@ -239,18 +287,18 @@ export function chainSteps(steps: Filters[]): Uint32Array[] {
 export type SortKey = 'best' | 'new';
 
 const GAISHI_RANK: Record<GaishiScore, number> = { A: 0, B: 1, C: 2, D: 3 };
-const CLASS_RANK: Record<SchoolClass, number> = { S: 0, A: 1, Overseas: 1, B: 2, C: 3 };
+const RATING_RANK: Record<SchoolRating, number> = { S: 0, A: 1, Overseas: 1, B: 2, C: 3 };
 const SENIORITY_RANK: Record<Seniority, number> = { Y: 0, B: 1, K: 2, 'S+': 3, S: 4 };
 const byDate = (a: number, b: number) =>
   CANDIDATES[a].cvUpdatedAt < CANDIDATES[b].cvUpdatedAt ? 1 : CANDIDATES[a].cvUpdatedAt > CANDIDATES[b].cvUpdatedAt ? -1 : 0;
 
-/** "Best CVs" is a placeholder rank: gaishi score, school class, seniority, then newest CV. */
+/** "Best CVs" is a placeholder rank: gaishi score, best school rating, seniority, then newest CV. */
 const byBest = (a: number, b: number) => {
   const x = CANDIDATES[a];
   const y = CANDIDATES[b];
   return (
     GAISHI_RANK[x.gaishiScore] - GAISHI_RANK[y.gaishiScore] ||
-    CLASS_RANK[x.schoolClass] - CLASS_RANK[y.schoolClass] ||
+    IX.bestRating[a] - IX.bestRating[b] ||
     SENIORITY_RANK[x.seniority] - SENIORITY_RANK[y.seniority] ||
     byDate(a, b)
   );

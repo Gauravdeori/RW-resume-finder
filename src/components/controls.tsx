@@ -1,4 +1,5 @@
-import { useId, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useI18n } from '../lib/i18n';
 
 export const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(' ');
@@ -14,6 +15,16 @@ export const OFF = 'border-line bg-field text-ink hover:border-accent/50';
 export const PICKED = 'border-pick-line bg-pick text-pick-ink font-semibold';
 const CONTROL = `rounded border ${PRESS}`;
 
+const TOGGLE_SIZE = {
+  md: 'h-[var(--ctl-h)] px-3 text-[13px]',
+  /** Compact lists (the degree lines): 32px. */
+  sm: 'h-8 px-3 text-[13px]',
+  /** Single letters (S, A, B...): square. */
+  square: 'h-[var(--ctl-h)] w-9 text-[13px] font-bold',
+  /** The main Gaishi score letters: 40px squares. */
+  big: 'h-10 w-10 text-[18px] font-bold',
+};
+
 /** One-click toggle button. */
 export function Toggle({
   on,
@@ -22,6 +33,7 @@ export function Toggle({
   className,
   label,
   title,
+  size = 'md',
 }: {
   on: boolean;
   onClick: () => void;
@@ -30,6 +42,7 @@ export function Toggle({
   label?: string;
   /** Tooltip with the full wording when the button shows a short one. */
   title?: string;
+  size?: keyof typeof TOGGLE_SIZE;
 }) {
   return (
     <button
@@ -39,7 +52,8 @@ export function Toggle({
       title={title}
       onClick={onClick}
       className={cx(
-        'inline-flex h-[var(--ctl-h)] items-center justify-center gap-1.5 px-3 text-[13px] leading-none whitespace-nowrap',
+        'inline-flex items-center justify-center gap-1.5 leading-none whitespace-nowrap',
+        TOGGLE_SIZE[size],
         CONTROL,
         on ? PICKED : OFF,
         className,
@@ -47,6 +61,152 @@ export function Toggle({
     >
       {children}
     </button>
+  );
+}
+
+/** Text that keeps the width of its semibold version, so a button does not grow when it is picked. */
+function SteadyText({ children }: { children: ReactNode }) {
+  return (
+    <span className="grid">
+      <span className="col-start-1 row-start-1">{children}</span>
+      <span aria-hidden className="invisible col-start-1 row-start-1 h-0 font-semibold">
+        {children}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * A row of joined buttons where at most one is picked (language levels, JLPT); clicking the picked one again
+ * clears it. Same look as the age decades.
+ */
+export function Segmented<T extends string>({
+  options,
+  value,
+  labels,
+  titles,
+  onPick,
+  label,
+  dense,
+}: {
+  options: readonly T[];
+  value: T | null;
+  labels?: Partial<Record<T, string>>;
+  titles?: Partial<Record<T, string>>;
+  onPick: (v: T) => void;
+  /** Group name for screen readers. */
+  label: string;
+  /** Tighter buttons, so a level row and its JLPT buttons share one line. */
+  dense?: boolean;
+}) {
+  return (
+    // Wraps only when there is no room (the narrow side panel); the full-screen boxes keep each group on one line.
+    <div role="group" aria-label={label} className="flex flex-wrap gap-y-1">
+      {options.map((o, i) => {
+        const on = value === o;
+        return (
+          <button
+            key={o}
+            type="button"
+            aria-pressed={on}
+            title={titles?.[o]}
+            onClick={() => onPick(o)}
+            className={cx(
+              'relative flex h-[var(--ctl-h)] items-center justify-center leading-none whitespace-nowrap',
+              dense ? 'px-[5px] text-[12px]' : 'px-2 text-[12.5px]',
+              PRESS,
+              i === 0 && 'rounded-l',
+              i === options.length - 1 && 'rounded-r',
+              on
+                ? 'z-[1] bg-pick font-semibold text-pick-ink shadow-[inset_0_0_0_1px_var(--pick-line)]'
+                : 'bg-field text-ink shadow-[inset_0_0_0_1px_var(--line)] hover:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_50%,transparent)]',
+            )}
+          >
+            <SteadyText>{labels?.[o] ?? o}</SteadyText>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Small pill for multi-select lists (qualifications): red when picked. */
+export function Chip({ on, onClick, children, title }: { on: boolean; onClick: () => void; children: ReactNode; title?: string }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      title={title}
+      onClick={onClick}
+      className={cx('inline-flex h-7 items-center rounded-full border px-2 text-[12.5px] leading-none whitespace-nowrap', PRESS, on ? PICKED : OFF)}
+    >
+      <SteadyText>{children}</SteadyText>
+    </button>
+  );
+}
+
+/**
+ * (i) button that opens a small glossary. The panel is a native popover in the page's top layer (Esc and a click
+ * outside close it), placed under the button and rendered at body level so the zoomed, clipped filter boxes do not
+ * shrink or cut it.
+ */
+export function InfoPopover({ label, children }: { label: string; children: ReactNode }) {
+  const id = useId().replace(/[^a-zA-Z0-9-]/g, '');
+  const button = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const p = panel.current;
+    if (!p) return;
+    const place = (e: Event) => {
+      if ((e as ToggleEvent).newState !== 'open' || !button.current) return;
+      const r = button.current.getBoundingClientRect();
+      const w = Math.min(340, window.innerWidth - 16);
+      p.style.width = `${w}px`;
+      p.style.left = `${Math.max(8, Math.min(r.left - 12, window.innerWidth - w - 8))}px`;
+      p.style.top = `${r.bottom + 6}px`;
+    };
+    // Flip above the button when there is no room below.
+    const flip = (e: Event) => {
+      if ((e as ToggleEvent).newState !== 'open' || !button.current) return;
+      const r = button.current.getBoundingClientRect();
+      if (r.bottom + 6 + p.offsetHeight > window.innerHeight - 8) p.style.top = `${Math.max(8, r.top - 6 - p.offsetHeight)}px`;
+    };
+    p.addEventListener('beforetoggle', place);
+    p.addEventListener('toggle', flip);
+    return () => {
+      p.removeEventListener('beforetoggle', place);
+      p.removeEventListener('toggle', flip);
+    };
+  }, []);
+  return (
+    <>
+      <button
+        ref={button}
+        type="button"
+        popoverTarget={id}
+        aria-label={label}
+        title={label}
+        className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-line bg-field text-muted hover:border-accent hover:text-accent"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden className="h-3.5 w-3.5" fill="currentColor">
+          <circle cx="8" cy="4.2" r="1.15" />
+          <rect x="7" y="6.6" width="2" height="6.4" rx="1" />
+        </svg>
+      </button>
+      {createPortal(
+        <div
+          ref={panel}
+          id={id}
+          popover="auto"
+          role="dialog"
+          aria-label={label}
+          className="fixed inset-auto m-0 rounded-lg border border-line bg-card p-3.5 text-ink shadow-hover"
+        >
+          {children}
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 
@@ -58,7 +218,7 @@ export function CheckTile({ on, onClick, label }: { on: boolean; onClick: () => 
       role="checkbox"
       aria-checked={on}
       onClick={onClick}
-      className={cx('flex h-[var(--ctl-h)] items-center gap-2 px-3 text-left text-[13px] leading-none whitespace-nowrap', CONTROL, on ? PICKED : OFF)}
+      className={cx('flex h-[var(--ctl-h)] items-center gap-1.5 px-2.5 text-left text-[13px] leading-none whitespace-nowrap', CONTROL, on ? PICKED : OFF)}
     >
       <span
         aria-hidden
@@ -155,7 +315,8 @@ export function RequiredBox({ on, name, onChange }: { on: boolean; name: string;
 }
 
 /**
- * A filter row (Ted's grid): a fixed label column (--label-w: 92px, 112px in Japanese), a 12px gap,
+ * A filter row (Ted's grid): a fixed label column (--label-w: 92px, 112px in Japanese; wider by --indent for the
+ * Gaishi score, so its indented sub-filters keep the same control line), a 12px gap,
  * then the controls, so all row labels share one left edge and all controls start on one vertical line.
  * With `required`, the label starts with the small Required box; unticked rows say "nice to have".
  * On phones (under 640px) the label sits above its controls, so the controls get the full width.
@@ -164,11 +325,14 @@ export function FilterRow({
   label,
   sub,
   required,
+  firstLine,
   children,
 }: {
   label: string;
   sub?: string;
   required?: { on: boolean; onChange: (on: boolean) => void };
+  /** Height of the first line of controls when it is not --ctl-h (40 for the Gaishi letters, 32 for degrees): the label centres on it. */
+  firstLine?: number;
   children: ReactNode;
 }) {
   const { t } = useI18n();
@@ -180,7 +344,10 @@ export function FilterRow({
       data-optional={required && !required.on ? '' : undefined}
       className="grid grid-cols-1 gap-x-3 gap-y-1.5 py-[var(--row-py)] sm:grid-cols-[var(--label-w)_minmax(0,1fr)]"
     >
-      <div className="flex items-start gap-1.5 sm:pt-[calc((var(--ctl-h)-15px)/2)]">
+      <div
+        className="flex items-start gap-1.5 sm:pt-[calc((var(--first-line,var(--ctl-h))-15px)/2)]"
+        style={firstLine ? ({ '--first-line': `${firstLine}px` } as CSSProperties) : undefined}
+      >
         {required && (
           <span className="pt-px">
             <RequiredBox on={required.on} name={label} onChange={required.onChange} />

@@ -1,6 +1,6 @@
 import { memo, type ReactNode } from 'react';
 import { useI18n } from '../lib/i18n';
-import type { Candidate } from '../lib/types';
+import { topEducation, type Candidate } from '../lib/types';
 
 export type CardVariant = 'row' | 'tile';
 export type Density = 'compact' | 'comfortable';
@@ -109,7 +109,8 @@ export const CandidateRow = memo(function CandidateRow({
 }) {
   const { t } = useI18n();
   const name = t.displayName(c);
-  const school = t.schoolWithClass(c.school, c.schoolClass);
+  const top = topEducation(c);
+  const school = t.schoolWithRating(top.school, top.schoolRating);
   const roomy = density === 'comfortable';
   const facts = (
     <>

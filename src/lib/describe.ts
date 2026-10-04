@@ -1,5 +1,5 @@
 import type { Dict } from './i18n';
-import { GAISHI_SCORES, SENIORITIES, type AgeFields, type Filters, type RowKey } from './types';
+import { DEGREES, GAISHI_SCORES, QUALIFICATIONS, SENIORITIES, type AgeFields, type Filters, type RowKey } from './types';
 import type { SavedSearch } from './savedSearches';
 
 /** Caption under the age slider: "Any age" | "30s, 40s" | "Ages 35 to 44". */
@@ -23,13 +23,15 @@ export function filterChips(f: Filters, t: Dict): string[] {
   for (const i of f.industries) out.push(t.industry[i]);
   for (const p of f.positions) out.push(t.position[p]);
   if (f.gaishiScores.length) out.push(t.chip.gaishi(GAISHI_SCORES.filter((g) => f.gaishiScores.includes(g)).join('/')));
-  if (f.englishMin !== 'any') out.push(t.chip.english(f.englishMin));
-  if (f.japaneseMin !== 'any') out.push(t.chip.japanese(f.japaneseMin));
-  if (f.foreign !== 'any') out.push(t.chip.foreign(f.foreign));
+  if (f.englishMin !== 'any') out.push(t.chip.english(f.englishMin, f.toeic));
+  if (f.japaneseMin !== 'any') out.push(t.chip.japanese(f.japaneseMin, f.jlpt));
   if (f.overseas !== 'any') out.push(t.chip.overseas(f.overseas));
-  for (const d of f.degrees) out.push(t.degree[d]);
-  for (const c of f.schoolClasses) out.push(t.chip.schoolClass(c));
-  for (const m of f.majors) out.push(t.major[m]);
+  if (f.foreign !== 'any') out.push(t.chip.foreign(f.foreign));
+  for (const d of DEGREES) if (f.degrees.includes(d)) out.push(t.chip.degree(d, f.majorFor[d]));
+  for (const r of f.schoolRatings) out.push(t.chip.schoolRating(r));
+  if (f.gpaMin) out.push(t.chip.gpa(f.gpaMin));
+  for (const q of QUALIFICATIONS) if (f.qualifications.includes(q)) out.push(t.qualification[q]);
+  if (s(f.qualText)) out.push(t.chip.qualText(s(f.qualText)));
   if (s(f.schoolName)) out.push(t.chip.school(s(f.schoolName)));
   return out;
 }
@@ -52,6 +54,7 @@ const CHIP_ROW: [string, RowKey][] = [
   ['prev-', 'company'],
   ['age', 'age'],
   ['gs-', 'gaishi'],
+  ['gpa', 'gpa'],
   ['g-', 'gender'],
   ['s-', 'seniority'],
   ['i-', 'industry'],
@@ -61,8 +64,9 @@ const CHIP_ROW: [string, RowKey][] = [
   ['foreign', 'foreign'],
   ['overseas', 'overseas'],
   ['d-', 'degree'],
-  ['c-', 'schoolClass'],
-  ['m-', 'major'],
+  ['r-', 'schoolRating'],
+  ['q-', 'qualification'],
+  ['qt', 'qualification'],
   ['school', 'school'],
 ];
 const rowOfChip = (id: string): RowKey => CHIP_ROW.find(([prefix]) => id.startsWith(prefix))![1];
@@ -100,14 +104,30 @@ export function activeChips(f: Filters, t: Dict): ActiveChip[] {
   for (const g of GAISHI_SCORES)
     if (f.gaishiScores.includes(g))
       out.push({ id: `gs-${g}`, label: t.chip.gaishi(g), remove: (x) => ({ ...x, gaishiScores: without(x.gaishiScores, g) }) });
-  if (f.englishMin !== 'any') out.push({ id: 'en', label: t.chip.english(f.englishMin), remove: (x) => ({ ...x, englishMin: 'any' }) });
-  if (f.japaneseMin !== 'any') out.push({ id: 'ja', label: t.chip.japanese(f.japaneseMin), remove: (x) => ({ ...x, japaneseMin: 'any' }) });
-  if (f.foreign !== 'any') out.push({ id: 'foreign', label: t.chip.foreign(f.foreign), remove: (x) => ({ ...x, foreign: 'any' }) });
+  // A level chip also clears the TOEIC score or JLPT level that set it.
+  if (f.englishMin !== 'any')
+    out.push({ id: 'en', label: t.chip.english(f.englishMin, f.toeic), remove: (x) => ({ ...x, englishMin: 'any', toeic: null }) });
+  if (f.japaneseMin !== 'any')
+    out.push({ id: 'ja', label: t.chip.japanese(f.japaneseMin, f.jlpt), remove: (x) => ({ ...x, japaneseMin: 'any', jlpt: null }) });
   if (f.overseas !== 'any') out.push({ id: 'overseas', label: t.chip.overseas(f.overseas), remove: (x) => ({ ...x, overseas: 'any' }) });
-  for (const d of f.degrees) out.push({ id: `d-${d}`, label: t.degree[d], remove: (x) => ({ ...x, degrees: without(x.degrees, d) }) });
-  for (const c of f.schoolClasses)
-    out.push({ id: `c-${c}`, label: t.chip.schoolClass(c), remove: (x) => ({ ...x, schoolClasses: without(x.schoolClasses, c) }) });
-  for (const m of f.majors) out.push({ id: `m-${m}`, label: t.major[m], remove: (x) => ({ ...x, majors: without(x.majors, m) }) });
+  if (f.foreign !== 'any') out.push({ id: 'foreign', label: t.chip.foreign(f.foreign), remove: (x) => ({ ...x, foreign: 'any' }) });
+  for (const d of DEGREES)
+    if (f.degrees.includes(d))
+      out.push({
+        id: `d-${d}`,
+        label: t.chip.degree(d, f.majorFor[d]),
+        remove: (x) => {
+          const { [d]: _gone, ...majorFor } = x.majorFor;
+          return { ...x, degrees: without(x.degrees, d), majorFor };
+        },
+      });
+  for (const r of f.schoolRatings)
+    out.push({ id: `r-${r}`, label: t.chip.schoolRating(r), remove: (x) => ({ ...x, schoolRatings: without(x.schoolRatings, r) }) });
+  if (f.gpaMin) out.push({ id: 'gpa', label: t.chip.gpa(f.gpaMin), remove: (x) => ({ ...x, gpaMin: null }) });
+  for (const q of QUALIFICATIONS)
+    if (f.qualifications.includes(q))
+      out.push({ id: `q-${q}`, label: t.qualification[q], remove: (x) => ({ ...x, qualifications: without(x.qualifications, q) }) });
+  if (s(f.qualText)) out.push({ id: 'qt', label: t.chip.qualText(s(f.qualText)), remove: (x) => ({ ...x, qualText: '' }) });
   if (s(f.schoolName)) out.push({ id: 'school', label: t.chip.school(s(f.schoolName)), remove: (x) => ({ ...x, schoolName: '' }) });
   return out.map((c) => ({ ...c, row: rowOfChip(c.id) }));
 }

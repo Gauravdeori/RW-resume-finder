@@ -1,5 +1,6 @@
 import { CANDIDATES } from './data';
 import type { Dict } from './i18n';
+import { topEducation } from './types';
 
 /**
  * File > Export results: the current result list, in its current order, as a CSV file (UTF-8 with a BOM so Excel
@@ -18,10 +19,14 @@ export function downloadCsv(rows: Uint32Array, t: Dict) {
     t.factJapanese,
     t.factGaishi,
     t.factSchool,
+    t.csv.toeic,
+    t.csv.jlpt,
+    t.csv.qualifications,
     t.csv.cvUpdated,
   ];
   const body = Array.from(rows, (i) => {
     const c = CANDIDATES[i];
+    const top = topEducation(c);
     return [
       t.displayName(c),
       c.currentTitle,
@@ -32,7 +37,10 @@ export function downloadCsv(rows: Uint32Array, t: Dict) {
       t.level[c.englishLevel],
       t.level[c.japaneseLevel],
       c.gaishiScore,
-      t.schoolWithClass(c.school, c.schoolClass),
+      t.schoolWithRating(top.school, top.schoolRating),
+      c.toeicScore ?? '',
+      c.jlpt ?? '',
+      [...c.qualifications.map((q) => t.qualificationFull[q]), ...c.otherQualifications].join('; '),
       c.cvUpdatedAt,
     ];
   });

@@ -56,7 +56,7 @@ function SearchList({
 }
 
 /**
- * Left panel of the full-screen search (~260px, full height): the big live count, "Show candidates",
+ * Left panel of the full-screen search (220px, full height): the big live count, "Show candidates",
  * "Save search", "Clear all", "Start from a job description", then saved and recent searches.
  * Picking a saved or recent search loads it into the filters at once.
  */
@@ -92,38 +92,42 @@ export const SearchSide = memo(function SearchSide({
   const shown = useAnimatedNumber(count);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
-      <h1 className="sr-only">{t.pageTitle}</h1>
-      <div className="flex flex-col rounded-xl bg-[linear-gradient(135deg,var(--accent)_0%,var(--accent-deep)_100%)] px-5 py-4 shadow-accent">
-        <div aria-hidden className="tabular text-[48px] leading-none font-bold tracking-[-0.03em] text-white">
-          {fmtNum(shown)}
+    // Two equal halves with a 12px gap, the same split as the 2x2 filter boxes beside it: the saved-searches panel's
+    // top and bottom edges line up with the lower boxes. On a very short screen the top half keeps its content height.
+    <div className="grid h-full min-h-0 grid-rows-[minmax(min-content,1fr)_minmax(0,1fr)] gap-3">
+      <div className="flex flex-col gap-3">
+        <h1 className="sr-only">{t.pageTitle}</h1>
+        <div className="flex flex-col rounded-xl bg-[linear-gradient(135deg,var(--accent)_0%,var(--accent-deep)_100%)] px-5 py-4 shadow-accent">
+          <div aria-hidden className="tabular text-[48px] leading-none font-bold tracking-[-0.03em] text-white">
+            {fmtNum(shown)}
+          </div>
+          <p className="mt-2 text-[14px] leading-tight font-bold text-on-accent" aria-live="polite" aria-atomic="true">
+            <span className="sr-only">{fmtNum(count)} </span>
+            {t.countMatch}
+          </p>
+          <p className="mt-0.5 text-[12px] leading-tight text-on-accent">{ofLine}</p>
+          {note && <p className="mt-1 text-[11.5px] leading-tight font-semibold text-white">★ {note}</p>}
         </div>
-        <p className="mt-2 text-[14px] leading-tight font-bold text-on-accent" aria-live="polite" aria-atomic="true">
-          <span className="sr-only">{fmtNum(count)} </span>
-          {t.countMatch}
-        </p>
-        <p className="mt-0.5 text-[12px] leading-tight text-on-accent">{ofLine}</p>
-        {note && <p className="mt-1 text-[11.5px] leading-tight font-semibold text-white">★ {note}</p>}
+  
+        <button
+          type="button"
+          onClick={onShow}
+          className={`h-11 rounded-lg bg-ink text-[14px] font-bold text-page shadow-control hover:bg-ink/90 ${PRESS}`}
+        >
+          {t.showCandidates}
+        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={onSave} className={`h-9 flex-1 rounded-lg border border-line bg-card text-[12.5px] font-medium hover:border-accent/50 ${PRESS}`}>
+            {t.saveSearch}
+          </button>
+          <button type="button" onClick={onClear} className="h-9 px-1.5 text-[12.5px] whitespace-nowrap text-muted underline underline-offset-2 hover:text-accent">
+            {t.clearAll}
+          </button>
+        </div>
+        {showJdFill && <JdButton onFill={onJdFill} />}
       </div>
 
-      <button
-        type="button"
-        onClick={onShow}
-        className={`h-11 rounded-lg bg-ink text-[14px] font-bold text-page shadow-control hover:bg-ink/90 ${PRESS}`}
-      >
-        {t.showCandidates}
-      </button>
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={onSave} className={`h-9 flex-1 rounded-lg border border-line bg-card text-[12.5px] font-medium hover:border-accent/50 ${PRESS}`}>
-          {t.saveSearch}
-        </button>
-        <button type="button" onClick={onClear} className="h-9 px-1.5 text-[12.5px] whitespace-nowrap text-muted underline underline-offset-2 hover:text-accent">
-          {t.clearAll}
-        </button>
-      </div>
-      {showJdFill && <JdButton onFill={onJdFill} />}
-
-      <div className="mt-1 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden rounded-xl border border-line bg-card px-2 py-2.5 shadow-card">
+      <div className="flex min-h-0 flex-col gap-3 overflow-hidden rounded-xl border border-line bg-card px-2 py-2.5 shadow-card">
         <SearchList
           title={t.savedSearches}
           empty={t.noSavedSearches}

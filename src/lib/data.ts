@@ -2,13 +2,16 @@ import { gaishiScore } from './gaishi';
 import type {
   Candidate,
   Degree,
+  Education,
   Gender,
   Industry,
+  Jlpt,
   Level,
   Major,
   Position,
   PreviousCompany,
-  SchoolClass,
+  Qualification,
+  SchoolRating,
   Seniority,
 } from './types';
 
@@ -32,19 +35,33 @@ function mulberry32(seed: number) {
   };
 }
 
-const rnd = mulberry32(20261005);
-const chance = (p: number) => rnd() < p;
-const int = (min: number, max: number) => min + Math.floor(rnd() * (max - min + 1));
-const pick = <T>(arr: readonly T[]): T => arr[Math.floor(rnd() * arr.length)];
-function weighted<T>(pairs: readonly (readonly [T, number])[]): T {
-  const total = pairs.reduce((s, [, w]) => s + w, 0);
-  let r = rnd() * total;
-  for (const [v, w] of pairs) {
-    r -= w;
-    if (r < 0) return v;
+function randomTools(seed: number) {
+  const rnd = mulberry32(seed);
+  const pick = <T>(arr: readonly T[]): T => arr[Math.floor(rnd() * arr.length)];
+  function weighted<T>(pairs: readonly (readonly [T, number])[]): T {
+    const total = pairs.reduce((s, [, w]) => s + w, 0);
+    let r = rnd() * total;
+    for (const [v, w] of pairs) {
+      r -= w;
+      if (r < 0) return v;
+    }
+    return pairs[pairs.length - 1][0];
   }
-  return pairs[pairs.length - 1][0];
+  return {
+    rnd,
+    chance: (p: number) => rnd() < p,
+    int: (min: number, max: number) => min + Math.floor(rnd() * (max - min + 1)),
+    pick,
+    weighted,
+  };
 }
+
+const { rnd, chance, int, pick, weighted } = randomTools(20261005);
+/**
+ * A second stream for the fields added later (extra degrees, GPA, qualifications, TOEIC, JLPT), so every
+ * candidate's original fields (name, age, companies, highest degree...) stay exactly as they were.
+ */
+const extra = randomTools(20261104);
 
 // ---------- reference lists ----------
 
@@ -76,7 +93,7 @@ const COMPANIES: Company[] = [
   ...c('energy', false, 'JERA', 'Tokyo Gas', 'ENEOS', 'Kansai Electric Power', 'Tokyo Electric Power', 'Inpex'),
 ];
 
-const SCHOOLS: Record<SchoolClass, string[]> = {
+const SCHOOLS: Record<SchoolRating, string[]> = {
   S: ['University of Tokyo', 'Kyoto University', 'Keio University', 'Waseda University'],
   A: ['Osaka University', 'Nagoya University', 'Tohoku University', 'Hitotsubashi University', 'Tokyo Institute of Technology', 'Kyushu University'],
   B: ['Sophia University', 'Meiji University', 'Rikkyo University', 'Doshisha University', 'Aoyama Gakuin University', 'International Christian University', 'Chuo University'],
@@ -124,6 +141,44 @@ const MAJOR_BY_POSITION: Record<Position, Major[]> = {
   supply: ['engineering', 'business'],
   gm: ['business', 'law', 'engineering'],
 };
+
+/** Search words for each qualification (English and Japanese), so the free-text box finds them too. */
+const QUAL_TERMS: Record<Qualification, string> = {
+  cpa: 'cpa|certified public accountant|公認会計士|会計士',
+  uscpa: 'uscpa|us cpa|us certified public accountant|米国公認会計士',
+  cfa: 'cfa|chartered financial analyst',
+  pmp: 'pmp|project management professional|プロジェクトマネジメント',
+  cia: 'cia|certified internal auditor|公認内部監査人',
+  bookkeeping: 'bookkeeping|boki|簿記',
+  itcert: 'it certification|aws|azure|it資格',
+  bengoshi: 'lawyer|bengoshi|attorney|弁護士',
+  sharoushi: 'labour and social security attorney|labor and social security attorney|sharoushi|社会保険労務士|社労士',
+};
+
+/** How likely each qualification is, by position. */
+const QUAL_ODDS: Record<Position, [Qualification, number][]> = {
+  sales: [['bookkeeping', 0.06], ['pmp', 0.03]],
+  marketing: [['bookkeeping', 0.05], ['pmp', 0.04], ['itcert', 0.03]],
+  finance: [['cpa', 0.14], ['uscpa', 0.12], ['cfa', 0.08], ['cia', 0.06], ['bookkeeping', 0.4]],
+  hr: [['sharoushi', 0.25], ['bookkeeping', 0.05]],
+  it: [['itcert', 0.45], ['pmp', 0.12]],
+  legal: [['bengoshi', 0.3], ['cia', 0.05], ['uscpa', 0.02]],
+  supply: [['pmp', 0.15], ['bookkeeping', 0.1]],
+  gm: [['pmp', 0.08], ['cfa', 0.04], ['uscpa', 0.04], ['bookkeeping', 0.08]],
+};
+
+const OTHER_QUALS = [
+  'TOEFL iBT',
+  'Takken (real estate transaction specialist)',
+  'FRM (Financial Risk Manager)',
+  'Six Sigma Green Belt',
+  'IT Passport',
+  'Securities sales representative',
+  'SAP certified consultant',
+  'Chartered Accountant (ICAEW)',
+  'Hisho kentei (secretary certificate)',
+  'Chūshō kigyō shindanshi (SME consultant)',
+];
 
 // ---------- helpers ----------
 
@@ -177,6 +232,93 @@ function pickCompany(industry: Industry, foreign: boolean, exclude: Set<string>)
   return pick(pool);
 }
 
+/** A typical GPA (on a 4.0 scale) by school rating, with some spread. */
+const GPA_BASE: Record<SchoolRating, number> = { S: 3.3, A: 3.2, B: 3.0, C: 2.8, Overseas: 3.3 };
+
+function makeGpa(rating: SchoolRating, japanese: boolean): Pick<Education, 'gpa' | 'gpaScale'> {
+  const gpaScale = japanese
+    ? extra.weighted([[4, 65], [4.3, 10], [5, 10], [100, 15]] as const)
+    : extra.weighted([[4, 85], [4.3, 15]] as const);
+  if (!extra.chance(0.75)) return { gpa: null, gpaScale };
+  const spread = (extra.rnd() + extra.rnd() + extra.rnd() - 1.5) * 0.6;
+  const on4 = Math.min(4, Math.max(2, GPA_BASE[rating] + spread));
+  const raw = (on4 / 4) * gpaScale;
+  return { gpa: gpaScale === 100 ? Math.round(raw) : Math.round(raw * 10) / 10, gpaScale };
+}
+
+function makeEntry(degree: Degree, major: Major | null, school: string, schoolRating: SchoolRating): Education {
+  return { degree, major, school, schoolRating, ...makeGpa(schoolRating, schoolRating !== 'Overseas') };
+}
+
+/** A school with about the same rating as `rating` (a step up or down now and then), for an earlier degree. */
+function nearbyRating(rating: SchoolRating, international: boolean): SchoolRating {
+  if (international || rating === 'Overseas') return extra.chance(0.8) ? 'Overseas' : extra.pick(['S', 'A'] as const);
+  return extra.weighted([[rating, 70], ['A', 10], ['B', 12], ['C', 8]] as const);
+}
+
+/**
+ * Every degree the candidate holds, lowest first. The highest degree, its major, school and rating are the ones the
+ * candidate always had; a Bachelor's (and often a Master's before a PhD) is added under it. MBAs have no major.
+ */
+function makeEducation(
+  highest: Degree,
+  major: Major,
+  school: string,
+  rating: SchoolRating,
+  international: boolean,
+  position: Position,
+): Education[] {
+  const earlierMajor = () => (extra.chance(0.75) ? major : extra.pick(MAJOR_BY_POSITION[position]));
+  const earlier = (degree: Degree, m: Major) => {
+    const r = nearbyRating(rating, international);
+    const sameSchool = r === rating && extra.chance(0.6);
+    return makeEntry(degree, m, sameSchool ? school : extra.pick(SCHOOLS[r]), r);
+  };
+  if (highest === "Bachelor's") return [makeEntry(highest, major, school, rating)];
+  if (highest === 'MBA') {
+    // The major they always had is the Bachelor's one; the MBA itself has none.
+    const r: SchoolRating = international
+      ? nearbyRating(rating, true)
+      : extra.weighted([['S', 25], ['A', 30], ['B', 30], ['C', 15]] as const);
+    return [makeEntry("Bachelor's", major, extra.pick(SCHOOLS[r]), r), makeEntry('MBA', null, school, rating)];
+  }
+  if (highest === "Master's") return [earlier("Bachelor's", earlierMajor()), makeEntry(highest, major, school, rating)];
+  const list = [earlier("Bachelor's", earlierMajor())];
+  if (extra.chance(0.7)) list.push(earlier("Master's", major));
+  list.push(makeEntry('PhD', major, school, rating));
+  return list;
+}
+
+function makeQualifications(position: Position): { qualifications: Qualification[]; otherQualifications: string[] } {
+  const qualifications = QUAL_ODDS[position].filter(([, p]) => extra.chance(p)).map(([q]) => q);
+  const otherQualifications = extra.chance(0.12) ? [extra.pick(OTHER_QUALS)] : [];
+  return { qualifications, otherQualifications };
+}
+
+/** TOEIC range for each English level (780 and up reads as Fluent; native speakers who took it score 945+). */
+const TOEIC_RANGE: Record<Level, [number, number]> = {
+  Basic: [250, 395],
+  Conversational: [400, 595],
+  Business: [600, 775],
+  Fluent: [780, 985],
+  Native: [945, 990],
+};
+
+/** About 6 in 10 Japanese candidates state a TOEIC score; few international ones do. */
+function makeToeic(english: Level, international: boolean): number | null {
+  const p = international ? 0.08 : english === 'Native' ? 0.4 : 0.6;
+  if (!extra.chance(p)) return null;
+  const [lo, hi] = TOEIC_RANGE[english];
+  return lo + 5 * extra.int(0, (hi - lo) / 5);
+}
+
+/** JLPT matching the Japanese level; native speakers have none. */
+function makeJlpt(japanese: Level): Jlpt | null {
+  if (japanese === 'Native' || !extra.chance(0.85)) return null;
+  if (japanese === 'Basic') return extra.chance(0.5) ? 'N5' : 'N4';
+  return ({ Conversational: 'N3', Business: 'N2', Fluent: 'N1' } as const)[japanese];
+}
+
 // ---------- generator ----------
 
 function makeCandidate(i: number): Candidate {
@@ -210,11 +352,11 @@ function makeCandidate(i: number): Candidate {
   const degree: Degree = international
     ? weighted([["Bachelor's", 40], ["Master's", 25], ['MBA', 30], ['PhD', 5]] as const)
     : weighted([["Bachelor's", 66], ["Master's", 17], ['MBA', 12], ['PhD', 5]] as const);
-  let schoolClass: SchoolClass;
-  if (international) schoolClass = chance(0.88) ? 'Overseas' : weighted([['S', 50], ['A', 50]] as const);
-  else if (degree === 'MBA') schoolClass = weighted([['Overseas', 45], ['S', 25], ['A', 20], ['B', 10]] as const);
-  else schoolClass = weighted([['S', 18], ['A', 22], ['B', 32], ['C', 22], ['Overseas', 6]] as const);
-  const school = pick(SCHOOLS[schoolClass]);
+  let schoolRating: SchoolRating;
+  if (international) schoolRating = chance(0.88) ? 'Overseas' : weighted([['S', 50], ['A', 50]] as const);
+  else if (degree === 'MBA') schoolRating = weighted([['Overseas', 45], ['S', 25], ['A', 20], ['B', 10]] as const);
+  else schoolRating = weighted([['S', 18], ['A', 22], ['B', 32], ['C', 22], ['Overseas', 6]] as const);
+  const school = pick(SCHOOLS[schoolRating]);
   const major: Major = chance(0.65) ? pick(MAJOR_BY_POSITION[position]) : pick(['business', 'engineering', 'science', 'law', 'humanities', 'infosci'] as const);
 
   // Languages and time abroad
@@ -227,13 +369,13 @@ function makeCandidate(i: number): Candidate {
     yearsOverseas = Math.min(targetAge - 20, int(6, 22));
   } else {
     englishLevel =
-      schoolClass === 'Overseas'
+      schoolRating === 'Overseas'
         ? weighted([['Business', 15], ['Fluent', 55], ['Native', 30]] as const)
         : weighted([['Basic', 14], ['Conversational', 26], ['Business', 31], ['Fluent', 21], ['Native', 8]] as const);
     japaneseLevel = 'Native';
-    if (chance(OVERSEAS_PROPENSITY[englishLevel]) || schoolClass === 'Overseas') {
+    if (chance(OVERSEAS_PROPENSITY[englishLevel]) || schoolRating === 'Overseas') {
       yearsOverseas = weighted([[int(1, 2), 40], [int(3, 5), 40], [int(6, 10), 20]] as const);
-      if (schoolClass === 'Overseas') yearsOverseas = Math.max(2, yearsOverseas);
+      if (schoolRating === 'Overseas') yearsOverseas = Math.max(2, yearsOverseas);
     } else {
       yearsOverseas = 0;
     }
@@ -280,6 +422,10 @@ function makeCandidate(i: number): Candidate {
   const cv = anchorUtc();
   cv.setUTCDate(cv.getUTCDate() - Math.floor(Math.pow(rnd(), 1.6) * 900));
 
+  // Fields added later, from the second random stream.
+  const education = makeEducation(degree, major, school, schoolRating, international, position);
+  const { qualifications, otherQualifications } = makeQualifications(position);
+
   return {
     id: `c${String(i + 1).padStart(4, '0')}`,
     lastName,
@@ -300,10 +446,11 @@ function makeCandidate(i: number): Candidate {
     foreignCompanyCount,
     yearsOverseas,
     gaishiScore: gaishiScore(englishLevel, foreignCompanyCount, yearsOverseas),
-    degree,
-    major,
-    school,
-    schoolClass,
+    toeicScore: makeToeic(englishLevel, international),
+    jlpt: makeJlpt(japaneseLevel),
+    education,
+    qualifications,
+    otherQualifications,
     cvUpdatedAt: isoDate(cv),
     yearsExperience,
     lc: {
@@ -311,7 +458,8 @@ function makeCandidate(i: number): Candidate {
       first: firstName.toLowerCase(),
       current: current.name.toLowerCase(),
       prev: previousCompanies.map((p) => p.company.toLowerCase()),
-      school: school.toLowerCase(),
+      schools: education.map((e) => e.school.toLowerCase()),
+      quals: [...qualifications.map((q) => QUAL_TERMS[q]), ...otherQualifications].join('|').toLowerCase(),
     },
   };
 }

@@ -1,16 +1,18 @@
 import type { SortKey } from './filter';
-import { AGE_MAX, AGE_MIN, ROW_KEYS, emptyFilters, type Filters, type RowKey } from './types';
+import { AGE_MAX, AGE_MIN, DEGREES_WITH_MAJOR, GPA_MAX, JLPT_LEVELS, MAJORS, ROW_KEYS, emptyFilters, type Degree, type Filters, type Jlpt, type Major, type RowKey } from './types';
+import { TOEIC_MAX, TOEIC_MIN } from './languageTests';
 
 /**
  * Search state <-> URL query string, so a search can be shared or refreshed.
  *   ?s=<locked step 1>&s=<locked step 2>&f=<current filters>&sort=new&v=results
  * v=results: the split view (results) for the first step; with locked steps it is always the split view.
  * Each step is "key.value~key.value", lists joined with ",", e.g. f=ind.financial~gs.A,B~age.d40
+ * Majors per degree: dm.Master's:engineering,PhD:science. GPA in tenths: gpa.30 = 3.0 or higher.
  * Written with history.replaceState: no reloads, no extra history entries.
  */
 
-type ListKey = 'genders' | 'seniority' | 'industries' | 'positions' | 'gaishiScores' | 'degrees' | 'schoolClasses' | 'majors';
-type TextKey = 'lastName' | 'firstName' | 'currentCompany' | 'schoolName';
+type ListKey = 'genders' | 'seniority' | 'industries' | 'positions' | 'gaishiScores' | 'degrees' | 'schoolRatings' | 'qualifications';
+type TextKey = 'lastName' | 'firstName' | 'currentCompany' | 'schoolName' | 'qualText';
 type ChoiceKey = 'foreign' | 'englishMin' | 'japaneseMin' | 'overseas';
 
 const LISTS: [string, ListKey][] = [
@@ -20,14 +22,16 @@ const LISTS: [string, ListKey][] = [
   ['pos', 'positions'],
   ['gs', 'gaishiScores'],
   ['deg', 'degrees'],
-  ['cls', 'schoolClasses'],
-  ['maj', 'majors'],
+  // "cls" from when it was called school class, so older links still open.
+  ['cls', 'schoolRatings'],
+  ['q', 'qualifications'],
 ];
 const TEXTS: [string, TextKey][] = [
   ['ln', 'lastName'],
   ['fn', 'firstName'],
   ['cc', 'currentCompany'],
   ['sch', 'schoolName'],
+  ['qt', 'qualText'],
 ];
 const CHOICES: [string, ChoiceKey][] = [
   ['fc', 'foreign'],
@@ -55,6 +59,11 @@ export function encodeFilters(f: Filters): string {
   if (f.ageMode === 'range') parts.push(`age.r${f.ageMin}-${f.ageMax}`);
   for (const [k, field] of LISTS) if (f[field].length) parts.push(`${k}.${(f[field] as string[]).map(enc).join(',')}`);
   for (const [k, field] of CHOICES) if (f[field] !== 'any') parts.push(`${k}.${enc(f[field])}`);
+  const majors = f.degrees.flatMap((d) => (f.majorFor[d] ? [`${enc(d)}:${f.majorFor[d]}`] : []));
+  if (majors.length) parts.push(`dm.${majors.join(',')}`);
+  if (f.toeic !== null) parts.push(`toeic.${f.toeic}`);
+  if (f.jlpt) parts.push(`jlpt.${f.jlpt}`);
+  if (f.gpaMin) parts.push(`gpa.${Math.round(f.gpaMin * 10)}`);
   if (f.optional.length) parts.push(`opt.${f.optional.join(',')}`);
   return parts.join('~');
 }
@@ -75,8 +84,25 @@ export function decodeFilters(s: string): Filters {
     else if (k === 'pc') {
       const prev = v.split(',').map(dec).filter(Boolean);
       f.previousCompanies = prev.length ? prev : [''];
+    } else if (k === 'dm') {
+      for (const pair of v.split(',')) {
+        const [d, m] = pair.split(':');
+        const degree = dec(d) as Degree;
+        if (DEGREES_WITH_MAJOR.includes(degree) && (MAJORS as readonly string[]).includes(m)) f.majorFor[degree] = m as Major;
+      }
+    } else if (k === 'toeic') {
+      const n = Number(v);
+      if (Number.isInteger(n) && n >= TOEIC_MIN && n <= TOEIC_MAX) f.toeic = n;
+    } else if (k === 'jlpt') {
+      if ((JLPT_LEVELS as readonly string[]).includes(v)) f.jlpt = v as Jlpt;
+    } else if (k === 'gpa') {
+      const n = Number(v) / 10;
+      if (n > 0 && n <= GPA_MAX) f.gpaMin = n;
     } else if (k === 'opt') {
-      f.optional = v.split(',').filter((r): r is RowKey => (ROW_KEYS as readonly string[]).includes(r));
+      f.optional = v
+        .split(',')
+        .map((r) => (r === 'schoolClass' ? 'schoolRating' : r))
+        .filter((r): r is RowKey => (ROW_KEYS as readonly string[]).includes(r));
     } else if (k === 'age') {
       if (v.startsWith('d')) {
         const decades = v.slice(1).split(',').map(Number).filter((d) => [20, 30, 40, 50, 60].includes(d));

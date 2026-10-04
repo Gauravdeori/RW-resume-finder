@@ -2,14 +2,18 @@ import { createContext, createElement, useCallback, useContext, useEffect, useMe
 import type {
   Candidate,
   Degree,
+  Education,
   ForeignFilter,
+  GaishiScore,
   Gender,
   Industry,
+  Jlpt,
   Level,
   Major,
   OverseasFilter,
   Position,
-  SchoolClass,
+  Qualification,
+  SchoolRating,
   Seniority,
 } from './types';
 
@@ -30,6 +34,12 @@ export function splitIso(iso: string) {
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+/** GPA as written on the CV: "3.4 / 4.0", "82 / 100". */
+export const fmtGpa = (e: Pick<Education, 'gpa' | 'gpaScale'>) =>
+  e.gpa === null ? '' : e.gpaScale === 100 ? `${e.gpa} / 100` : `${e.gpa.toFixed(1)} / ${e.gpaScale.toFixed(1)}`;
+/** Scores as a range, best first: "A", "A or B", "A to C". */
+export const scoreSpan = (s: GaishiScore[], or: string, to: string) =>
+  s.length === 1 ? s[0] : s.length === 2 ? `${s[0]} ${or} ${s[1]}` : `${s[0]} ${to} ${s[s.length - 1]}`;
 
 const en = {
   appName: 'Resume Finder',
@@ -116,11 +126,25 @@ const en = {
   rowGaishi: 'Gaishi',
   gaishiSub: 'Fit for foreign-affiliated companies',
   gaishiScore: 'Gaishi score',
-  gaishiHelp: 'A is the strongest. Built from English level, foreign-company experience and time overseas.',
-  foreignLabel: 'Foreign company',
+  gaishiHelp: 'A is the strongest. Made up of English, foreign companies and time overseas (below).',
+  /** Live hint under the score: what the sub-filters below mean for the score. */
+  gaishiHint: {
+    any: 'Sub-filters set to Any = every score, A to D',
+    match: (s: GaishiScore[]) => `These settings match score ${scoreSpan(s, 'or', 'to')}`,
+    conflict: (s: GaishiScore[]) => `These settings only match score ${scoreSpan(s, 'or', 'to')}: no one has the score you ticked`,
+  },
+  foreignLabel: 'Worked at a foreign company',
   foreign: { any: 'Any', never: 'Never', once: 'At least once', twice: 'Twice or more' } as Record<ForeignFilter, string>,
-  englishAtLeast: 'English, at least',
-  japaneseAtLeast: 'Japanese, at least',
+  englishLevel: 'English level',
+  japaneseLevel: 'Japanese level',
+  /** Small helper under the level buttons: a level filters as "this level or higher". */
+  orHigher: 'or higher',
+  toeicLabel: 'TOEIC score',
+  toeicPlaceholder: 'TOEIC',
+  toeicIs: (n: number, l: Level) => `TOEIC ${n} = ${en.level[l]}`,
+  jlptLabel: 'JLPT',
+  jlptIs: (n: Jlpt, l: Level) => `JLPT ${n} = ${en.level[l]}`,
+  jlptNative: 'Native speakers = Native',
   any: 'Any',
   level: { Basic: 'Basic', Conversational: 'Conversational', Business: 'Business', Fluent: 'Fluent', Native: 'Native' } as Record<Level, string>,
   overseasLabel: 'Lived overseas',
@@ -129,8 +153,49 @@ const en = {
   rowEducation: 'Education',
   degreeLabel: 'Degree',
   degree: { "Bachelor's": "Bachelor's", "Master's": "Master's", MBA: 'MBA', PhD: 'PhD' } as Record<Degree, string>,
-  schoolClassLabel: 'School class',
-  schoolClass: { S: 'S', A: 'A', B: 'B', C: 'C', Overseas: 'Overseas' } as Record<SchoolClass, string>,
+  majorFor: (d: Degree) => `Major for ${en.degree[d]}`,
+  anyMajor: 'Any major',
+  schoolRatingLabel: 'School rating',
+  schoolRating: { S: 'S', A: 'A', B: 'B', C: 'C', Overseas: 'Overseas' } as Record<SchoolRating, string>,
+  /** The (i) glossary beside School rating. */
+  ratingInfo: 'What the school ratings mean',
+  ratingGlossary: {
+    S: 'Top national and elite universities (e.g. Univ. of Tokyo, Kyoto, Keio, Waseda)',
+    A: 'Strong universities (e.g. Osaka, Nagoya, Tohoku, Hitotsubashi)',
+    B: 'Solid universities',
+    C: 'Other universities',
+    Overseas: 'Schools outside Japan',
+  } as Record<SchoolRating, string>,
+  ratingSample: 'Sample list, to be confirmed by Robert Walters.',
+  gpaLabel: 'GPA / score',
+  gpaSlider: 'Minimum GPA, on a 4.0 scale',
+  gpaBox: 'Minimum GPA',
+  gpaHelp: 'or higher, out of 4.0',
+  qualLabel: 'Other qualifications',
+  qualification: {
+    cpa: 'CPA',
+    uscpa: 'USCPA',
+    cfa: 'CFA',
+    pmp: 'PMP',
+    cia: 'CIA',
+    bookkeeping: 'Bookkeeping',
+    itcert: 'IT cert. (AWS/Azure)',
+    bengoshi: 'Lawyer (Bengoshi)',
+    sharoushi: 'Sharoushi',
+  } as Record<Qualification, string>,
+  qualificationFull: {
+    cpa: 'Certified Public Accountant (CPA)',
+    uscpa: 'US Certified Public Accountant (USCPA)',
+    cfa: 'Chartered Financial Analyst (CFA)',
+    pmp: 'Project Management Professional (PMP)',
+    cia: 'Certified Internal Auditor (CIA)',
+    bookkeeping: 'Bookkeeping (Boki)',
+    itcert: 'IT certifications (AWS/Azure)',
+    bengoshi: 'Lawyer (Bengoshi)',
+    sharoushi: 'Labour and social security attorney (Sharoushi)',
+  } as Record<Qualification, string>,
+  qualOther: 'Other qualification',
+  qualOtherPlaceholder: 'Other…',
   majorLabel: 'Major',
   major: {
     business: 'Business and economics',
@@ -150,7 +215,7 @@ const en = {
   saveSearch: 'Save search',
   clearAll: 'Clear all filters',
   activeFilters: 'Active filters',
-  sections: { basics: 'Basics', role: 'Role', gaishi: 'Gaishi fit', education: 'Education' },
+  sections: { candidate: 'Candidate', role: 'Role', gaishi: 'Gaishi fit', education: 'Education' },
   nSelected: (n: number) => `${n} selected`,
   filtersButton: (n: number) => (n ? `Filters (${n})` : 'Filters'),
   filtersTitle: 'Filters',
@@ -193,7 +258,7 @@ const en = {
   factJapaneseShort: 'JP',
   factGaishi: 'Gaishi score',
   factSchool: 'School',
-  schoolWithClass: (school: string, cls: SchoolClass) => (cls === 'Overseas' ? school : `${school} (${cls} class)`),
+  schoolWithRating: (school: string, r: SchoolRating) => (r === 'Overseas' ? school : `${school} (${r} rating)`),
   previouslyAt: 'Previously at',
   cardMeta: (c: Candidate) =>
     `${plural(c.yearsExperience, 'year', 'years')} in ${en.industry[c.industry].toLowerCase()} · CV ${en.formatDate(c.cvUpdatedAt)}`,
@@ -224,8 +289,12 @@ const en = {
     const abroad = c.yearsOverseas > 0 ? `Lived overseas for ${plural(c.yearsOverseas, 'year', 'years')}.` : 'Has not lived overseas.';
     return `${c.currentTitle} with ${plural(c.yearsExperience, 'year', 'years')} of experience in ${en.industry[c.industry].toLowerCase()}, working in ${en.position[c.position].toLowerCase()}. ${en.level[c.englishLevel]} English and ${en.level[c.japaneseLevel].toLowerCase()} Japanese. ${abroad}`;
   },
-  educationText: (c: Candidate) => `${en.degree[c.degree]}, ${en.major[c.major]}. ${c.school}.`,
-  languagesText: (c: Candidate) => `Japanese: ${en.level[c.japaneseLevel]}. English: ${en.level[c.englishLevel]}.`,
+  /** One line per degree: "Master's, Engineering. Kyoto University (S rating). GPA 3.4 / 4.0." */
+  educationLine: (e: Education) =>
+    `${en.degree[e.degree]}${e.major ? `, ${en.major[e.major]}` : ''}. ${en.schoolWithRating(e.school, e.schoolRating)}.${e.gpa === null ? '' : ` GPA ${fmtGpa(e)}.`}`,
+  languagesText: (c: Candidate) =>
+    `Japanese: ${en.level[c.japaneseLevel]}${c.jlpt ? ` (JLPT ${c.jlpt})` : ''}. English: ${en.level[c.englishLevel]}${c.toeicScore ? ` (TOEIC ${c.toeicScore})` : ''}.`,
+  cvQualifications: 'Qualifications',
 
   nameThisSearch: 'Name this search',
   searchName: 'Search name',
@@ -238,11 +307,14 @@ const en = {
     current: (v: string) => `Now at: ${v}`,
     previous: (v: string) => `Previously at: ${v}`,
     gaishi: (v: string) => `Gaishi score ${v}`,
-    english: (l: Level) => `English: ${en.level[l]}+`,
-    japanese: (l: Level) => `Japanese: ${en.level[l]}+`,
+    english: (l: Level, toeic: number | null) => `English: ${en.level[l]}+${toeic === null ? '' : ` (TOEIC ${toeic})`}`,
+    japanese: (l: Level, jlpt: Jlpt | null) => `Japanese: ${en.level[l]}+${jlpt ? ` (JLPT ${jlpt})` : ''}`,
     foreign: (v: ForeignFilter) => `Foreign company: ${en.foreign[v]}`,
     overseas: (v: OverseasFilter) => `Lived overseas: ${en.overseas[v]}`,
-    schoolClass: (c: SchoolClass) => (c === 'Overseas' ? 'Overseas school' : `${c} class`),
+    degree: (d: Degree, m: Major | undefined) => (m ? `${en.degree[d]}: ${en.major[m]}` : en.degree[d]),
+    schoolRating: (r: SchoolRating) => (r === 'Overseas' ? 'Overseas school' : `${r} rating`),
+    gpa: (v: number) => `GPA ${v.toFixed(1)}+`,
+    qualText: (v: string) => `Qualification: ${v}`,
     school: (v: string) => `School: ${v}`,
     none: 'No filters',
   },
@@ -443,7 +515,16 @@ const en = {
   openSavedTitle: 'Open saved search',
   toastSaved: (name: string) => `Saved “${name}”`,
   toastExported: (n: number) => `Exported ${fmtNum(n)} candidates`,
-  csv: { name: 'Name', title: 'Title', company: 'Company', industry: 'Industry', cvUpdated: 'CV updated' },
+  csv: {
+    name: 'Name',
+    title: 'Title',
+    company: 'Company',
+    industry: 'Industry',
+    cvUpdated: 'CV updated',
+    toeic: 'TOEIC',
+    jlpt: 'JLPT',
+    qualifications: 'Qualifications',
+  },
 
   /** Menu bar under the top bar (like Word). */
   menu: {

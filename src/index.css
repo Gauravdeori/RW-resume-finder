@@ -138,15 +138,18 @@
 /*
  * Density (View menu): Compact is the default and keeps the whole search on one screen.
  * --ctl-h is the height of buttons, tiles and inputs; --row-py the space above and below each filter row.
- * --label-w is the filter label column (Japanese labels are set wider so none wrap).
+ * --label-w is the filter label column, the same in every box so controls start on one line (Japanese labels are
+ * set wider so few wrap). --indent is how far the Gaishi sub-filters sit in under the score.
  */
 :root {
   --ctl-h: 36px;
-  --row-py: 4px;
-  --label-w: 92px;
+  --row-py: 3px;
+  --label-base: 92px;
+  --label-w: var(--label-base);
+  --indent: 24px;
 }
 :root:lang(ja) {
-  --label-w: 112px;
+  --label-base: 112px;
 }
 [data-density='comfortable'] {
   --ctl-h: 40px;

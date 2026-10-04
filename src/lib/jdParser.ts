@@ -1,4 +1,5 @@
-import type { Filters, ForeignFilter, Industry, Level, OverseasFilter, Position, Seniority, Degree } from './types';
+import { JLPT_LEVEL, TOEIC_MAX, TOEIC_MIN, toeicLevel } from './languageTests';
+import type { Filters, ForeignFilter, Industry, Jlpt, Level, OverseasFilter, Position, Qualification, Seniority, Degree } from './types';
 
 /**
  * Turn a pasted job description into filters.
@@ -50,6 +51,18 @@ const SENIORITY_RULES: [Seniority, RegExp][] = [
   ['K', /\b(manager|team lead(er)?)\b|課長|マネージャー/i],
   ['S+', /\b(senior|sr\.?)\b|主任/i],
   ['S', /\b(associate|analyst|specialist|coordinator|assistant|junior)\b|担当者/i],
+];
+
+const QUAL_RULES: [Qualification, RegExp][] = [
+  ['uscpa', /\bUS ?CPA\b|米国公認会計士/i],
+  ['cpa', /(?<!\bUS ?)\bCPA\b|(?<!米国)公認会計士/],
+  ['cfa', /\bCFA\b/],
+  ['pmp', /\bPMP\b/],
+  ['cia', /\bCIA\b|公認内部監査人/],
+  ['bookkeeping', /\bbookkeeping\b|簿記/i],
+  ['itcert', /\b(AWS|Azure)\b.{0,20}\bcertifi|\bcertified\b.{0,20}\b(AWS|Azure)\b|AWS認定|Azure認定/i],
+  ['bengoshi', /\b(bengoshi|qualified lawyer|licensed attorney|bar admission)\b|弁護士/i],
+  ['sharoushi', /\bsharoushi\b|社会保険労務士|社労士/i],
 ];
 
 const LEVEL_WORDS: [Level, string][] = [
@@ -115,10 +128,22 @@ export function parseJobDescription(text: string): JdResult {
   const seniority = firstMatch(titleLine, SENIORITY_RULES) ?? firstMatch(body, SENIORITY_RULES);
   if (seniority) patch.seniority = [seniority];
 
+  // A stated level wins; otherwise a TOEIC score or JLPT level sets it (and is kept, so the panel shows it).
   const english = languageLevel(body, 'english');
-  if (english) patch.englishMin = english;
+  const toeic = Number(body.match(/\bTOEIC\b\D{0,12}(\d{3})/i)?.[1] ?? NaN);
+  if (english) Object.assign(patch, { englishMin: english, toeic: null });
+  else if (toeic >= TOEIC_MIN && toeic <= TOEIC_MAX) {
+    patch.toeic = toeic;
+    patch.englishMin = toeicLevel(toeic);
+  }
   const japanese = languageLevel(body, 'japanese');
-  if (japanese) patch.japaneseMin = japanese;
+  const jlpt = body.match(/\bJLPT\b\D{0,6}(N[1-5])\b|日本語能力試験\D{0,6}(N[1-5])/i);
+  const jlptLevel = (jlpt?.[1] ?? jlpt?.[2])?.toUpperCase() as Jlpt | undefined;
+  if (japanese) Object.assign(patch, { japaneseMin: japanese, jlpt: null });
+  else if (jlptLevel) {
+    patch.jlpt = jlptLevel;
+    patch.japaneseMin = JLPT_LEVEL[jlptLevel];
+  }
 
   let foreign: ForeignFilter | null = null;
   if (/\b(two or more|multiple|several) (foreign|global|multinational)/i.test(body)) foreign = 'twice';
@@ -134,5 +159,10 @@ export function parseJobDescription(text: string): JdResult {
   if (/\bPh\.?D\b/i.test(body)) degrees.push('PhD');
   if (degrees.length) patch.degrees = degrees;
 
-  return { patch, filled: Object.keys(patch).length };
+  const qualifications = QUAL_RULES.filter(([, re]) => re.test(body)).map(([q]) => q);
+  if (qualifications.length) patch.qualifications = qualifications;
+
+  // A TOEIC score or JLPT level only sets its language level: count that as one filter.
+  const filled = Object.keys(patch).filter((k) => k !== 'toeic' && k !== 'jlpt').length;
+  return { patch, filled };
 }

@@ -25,8 +25,22 @@ export type Major = (typeof MAJORS)[number];
 export const DEGREES = ["Bachelor's", "Master's", 'MBA', 'PhD'] as const;
 export type Degree = (typeof DEGREES)[number];
 
-export const SCHOOL_CLASSES = ['S', 'A', 'B', 'C', 'Overseas'] as const;
-export type SchoolClass = (typeof SCHOOL_CLASSES)[number];
+/** MBA has no major; Bachelor's, Master's and PhD each have their own. */
+export const DEGREES_WITH_MAJOR: readonly Degree[] = ["Bachelor's", "Master's", 'PhD'];
+
+/** School rating (draft list, to be confirmed by Robert Walters): S top, A strong, B solid, C other, Overseas outside Japan. */
+export const SCHOOL_RATINGS = ['S', 'A', 'B', 'C', 'Overseas'] as const;
+export type SchoolRating = (typeof SCHOOL_RATINGS)[number];
+
+export const QUALIFICATIONS = ['cpa', 'uscpa', 'cfa', 'pmp', 'cia', 'bookkeeping', 'itcert', 'bengoshi', 'sharoushi'] as const;
+export type Qualification = (typeof QUALIFICATIONS)[number];
+
+/** JLPT, easiest (N5) to hardest (N1). */
+export const JLPT_LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'] as const;
+export type Jlpt = (typeof JLPT_LEVELS)[number];
+
+/** Minimum GPA filter: 0.0 to 4.0 in steps of 0.1 (every GPA is normalised to a 4.0 scale). */
+export const GPA_MAX = 4;
 
 export const GAISHI_SCORES = ['A', 'B', 'C', 'D'] as const;
 export type GaishiScore = (typeof GAISHI_SCORES)[number];
@@ -52,6 +66,17 @@ export interface PreviousCompany {
   isForeign: boolean;
 }
 
+/** One degree the candidate holds. GPA is on the school's own scale (gpaScale: 4.0, 4.3, 5.0 or 100); null = not stated. */
+export interface Education {
+  degree: Degree;
+  /** null for an MBA (no major). */
+  major: Major | null;
+  school: string;
+  schoolRating: SchoolRating;
+  gpa: number | null;
+  gpaScale: number;
+}
+
 export interface Candidate {
   id: string;
   lastName: string;
@@ -72,15 +97,23 @@ export interface Candidate {
   foreignCompanyCount: number;
   yearsOverseas: number;
   gaishiScore: GaishiScore;
-  degree: Degree;
-  major: Major;
-  school: string;
-  schoolClass: SchoolClass;
+  /** TOEIC score, when the CV states one. */
+  toeicScore: number | null;
+  /** JLPT level, when the CV states one (native Japanese speakers have none). */
+  jlpt: Jlpt | null;
+  /** Every degree held, in the order earned: the highest is last. */
+  education: Education[];
+  qualifications: Qualification[];
+  /** Qualifications outside the standard list, as written on the CV. */
+  otherQualifications: string[];
   cvUpdatedAt: string; // ISO date
   yearsExperience: number;
   /** Lower-cased copies for fast partial text matching. */
-  lc: { last: string; first: string; current: string; prev: string[]; school: string };
+  lc: { last: string; first: string; current: string; prev: string[]; schools: string[]; quals: string };
 }
+
+/** The highest degree: the one shown on result cards. */
+export const topEducation = (c: Candidate): Education => c.education[c.education.length - 1];
 
 export type ForeignFilter = 'any' | 'never' | 'once' | 'twice';
 export type OverseasFilter = 'any' | 'yes' | 'no';
@@ -103,11 +136,21 @@ export interface Filters {
   gaishiScores: GaishiScore[];
   foreign: ForeignFilter;
   englishMin: LevelFilter;
+  /** TOEIC score typed by the recruiter; it sets englishMin (the level is what filters). */
+  toeic: number | null;
   japaneseMin: LevelFilter;
+  /** JLPT level picked by the recruiter; it sets japaneseMin (the level is what filters). */
+  jlpt: Jlpt | null;
   overseas: OverseasFilter;
   degrees: Degree[];
-  schoolClasses: SchoolClass[];
-  majors: Major[];
+  /** Major picked for a ticked degree (never for MBA). Matches only that same degree. */
+  majorFor: Partial<Record<Degree, Major>>;
+  schoolRatings: SchoolRating[];
+  /** Minimum GPA on a 4.0 scale; null = any. */
+  gpaMin: number | null;
+  qualifications: Qualification[];
+  /** Free text matched against every qualification on the CV. */
+  qualText: string;
   schoolName: string;
   /**
    * Filter rows marked "nice to have" (their Required box unticked). They do not leave anyone out;
@@ -131,8 +174,9 @@ export const ROW_KEYS = [
   'japanese',
   'overseas',
   'degree',
-  'schoolClass',
-  'major',
+  'schoolRating',
+  'gpa',
+  'qualification',
   'school',
 ] as const;
 export type RowKey = (typeof ROW_KEYS)[number];
@@ -157,21 +201,35 @@ export function emptyFilters(): Filters {
     gaishiScores: [],
     foreign: 'any',
     englishMin: 'any',
+    toeic: null,
     japaneseMin: 'any',
+    jlpt: null,
     overseas: 'any',
     degrees: [],
-    schoolClasses: [],
-    majors: [],
+    majorFor: {},
+    schoolRatings: [],
+    gpaMin: null,
+    qualifications: [],
+    qualText: '',
     schoolName: '',
     optional: [],
   };
 }
 
-/** Fill in any fields missing from older stored filters. */
-export function normalizeFilters(f: Partial<Filters>): Filters {
-  const base = { ...emptyFilters(), ...f };
+/** Filters stored before "School class" became "School rating" and majors moved onto their degree. */
+type OldFilters = Partial<Filters> & { schoolClasses?: SchoolRating[]; majors?: unknown };
+
+/** Fill in any fields missing from older stored filters (saved and recent searches). */
+export function normalizeFilters(f: OldFilters): Filters {
+  const { schoolClasses, majors: _majors, ...rest } = f;
+  const base = { ...emptyFilters(), ...rest };
+  if (!f.schoolRatings && Array.isArray(schoolClasses)) base.schoolRatings = schoolClasses;
   if (!Array.isArray(base.previousCompanies) || base.previousCompanies.length === 0) base.previousCompanies = [''];
+  if (!base.majorFor || typeof base.majorFor !== 'object') base.majorFor = {};
   if (!Array.isArray(base.optional)) base.optional = [];
+  base.optional = base.optional
+    .map((r) => ((r as string) === 'schoolClass' ? 'schoolRating' : r))
+    .filter((r): r is RowKey => (ROW_KEYS as readonly string[]).includes(r));
   return base;
 }
 

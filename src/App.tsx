@@ -1,7 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { HelpDialog, OpenSavedDialog, Toast, type HelpTopic } from './components/Dialogs';
 import { FilterPanel } from './components/FilterPanel';
-import { FitToScreen } from './components/FitToScreen';
 import { JdButton } from './components/JdButton';
 import { MenuBar, type Menu } from './components/MenuBar';
 import { FilterSheet, MobileBar } from './components/MobileFilters';
@@ -37,21 +36,31 @@ const DESKTOP = '(min-width: 1024px)';
 /** Typing in one box (or dragging the age slider) within this time counts as one change for "Undo last filter". */
 const UNDO_MERGE_MS = 1500;
 const UNDO_KEEP = 50;
-const TEXT_FIELDS = ['lastName', 'firstName', 'currentCompany', 'previousCompanies', 'schoolName'];
+const TEXT_FIELDS = ['lastName', 'firstName', 'currentCompany', 'previousCompanies', 'schoolName', 'qualText'];
 
-type TextPart = Pick<Filters, 'lastName' | 'firstName' | 'currentCompany' | 'previousCompanies' | 'schoolName'>;
+type TextPart = Pick<Filters, 'lastName' | 'firstName' | 'currentCompany' | 'previousCompanies' | 'schoolName' | 'qualText'>;
 const textOf = (f: Filters): string =>
-  JSON.stringify([f.lastName, f.firstName, f.currentCompany, f.previousCompanies, f.schoolName]);
+  JSON.stringify([f.lastName, f.firstName, f.currentCompany, f.previousCompanies, f.schoolName, f.qualText]);
 const withText = (f: Filters, key: string): Filters => {
-  const [lastName, firstName, currentCompany, previousCompanies, schoolName] = JSON.parse(key) as [
+  const [lastName, firstName, currentCompany, previousCompanies, schoolName, qualText] = JSON.parse(key) as [
     string,
     string,
     string,
     string[],
     string,
+    string,
   ];
-  const text: TextPart = { lastName, firstName, currentCompany, previousCompanies, schoolName };
+  const text: TextPart = { lastName, firstName, currentCompany, previousCompanies, schoolName, qualText };
   return { ...f, ...text };
+};
+/** Changes that come in quick bursts (typing a TOEIC score or GPA, dragging a slider) count as one for Undo. */
+const mergeKeyOf = (p: Partial<Filters>): string | undefined => {
+  const keys = Object.keys(p);
+  if (keys.length === 1 && TEXT_FIELDS.includes(keys[0])) return keys[0];
+  if (p.ageMode === 'range') return 'age-range';
+  if ('toeic' in p && p.toeic !== null) return 'toeic';
+  if (keys.length === 1 && 'gpaMin' in p) return 'gpa';
+  return undefined;
 };
 
 /**
@@ -188,10 +197,7 @@ export default function App() {
   );
   const patchDraft = useCallback(
     (p: Partial<Filters>) => {
-      const keys = Object.keys(p);
-      const merge =
-        keys.length === 1 && TEXT_FIELDS.includes(keys[0]) ? keys[0] : p.ageMode === 'range' ? 'age-range' : undefined;
-      remember(merge);
+      remember(mergeKeyOf(p));
       setDraft((d) => ({ ...d, ...p }));
     },
     [remember],
@@ -454,8 +460,10 @@ export default function App() {
 
       {!onResults ? (
         desktop ? (
-          <main className="flex min-h-0 flex-1 gap-4 px-4 py-2.5 lg:px-5">
-            <aside aria-label={t.filtersLabel} className="w-[260px] flex-none">
+          // Left column and the 2x2 boxes share one height and one split: the saved-searches panel lines up with the
+          // lower boxes, and every gap is 12px.
+          <main className="flex min-h-0 flex-1 gap-3 px-4 py-2">
+            <aside aria-label={t.filtersLabel} className="w-[220px] flex-none">
               <SearchSide
                 count={results.length}
                 ofLine={ofLine}
@@ -471,8 +479,8 @@ export default function App() {
                 onShowAllSaved={() => setOpenSavedDialog(true)}
               />
             </aside>
-            {/* Fits at 1440x900 as is; on shorter screens it scales down slightly to fit instead of scrolling. */}
-            <FitToScreen className="min-w-0 flex-1">{zones}</FitToScreen>
+            {/* Fits at 1440x900 as is; on shorter screens the boxes' content scales down slightly to fit instead of scrolling. */}
+            <div className="min-h-0 min-w-0 flex-1">{zones}</div>
           </main>
         ) : (
           <>
