@@ -92,10 +92,10 @@ export const SearchSide = memo(function SearchSide({
   const shown = useAnimatedNumber(count);
 
   return (
-    // Two equal halves with a 12px gap, the same split as the 2x2 filter boxes beside it: the saved-searches panel's
-    // top and bottom edges line up with the lower boxes. On a very short screen the top half keeps its content height.
-    <div className="grid h-full min-h-0 grid-rows-[minmax(min-content,1fr)_minmax(0,1fr)] gap-3">
-      <div className="flex flex-col gap-3">
+    // Same height as the 2x2 filter boxes beside it: the count card's top lines up with the upper boxes and the
+    // saved-searches panel's bottom with the lower boxes. The panel takes all the room under the buttons.
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      <div className="flex flex-none flex-col gap-3">
         <h1 className="sr-only">{t.pageTitle}</h1>
         <div className="flex flex-col rounded-xl bg-[linear-gradient(135deg,var(--accent)_0%,var(--accent-deep)_100%)] px-5 py-4 shadow-accent">
           <div aria-hidden className="tabular text-[48px] leading-none font-bold tracking-[-0.03em] text-white">
@@ -108,7 +108,7 @@ export const SearchSide = memo(function SearchSide({
           <p className="mt-0.5 text-[12px] leading-tight text-on-accent">{ofLine}</p>
           {note && <p className="mt-1 text-[11.5px] leading-tight font-semibold text-white">★ {note}</p>}
         </div>
-  
+
         <button
           type="button"
           onClick={onShow}
@@ -127,7 +127,8 @@ export const SearchSide = memo(function SearchSide({
         {showJdFill && <JdButton onFill={onJdFill} />}
       </div>
 
-      <div className="flex min-h-0 flex-col gap-3 overflow-hidden rounded-xl border border-line bg-card px-2 py-2.5 shadow-card">
+      {/* Scrolls inside only if the lists are taller than the room left (short screens). */}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain rounded-xl border border-line bg-card px-2 py-2.5 shadow-card">
         <SearchList
           title={t.savedSearches}
           empty={t.noSavedSearches}
